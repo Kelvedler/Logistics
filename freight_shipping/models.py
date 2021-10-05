@@ -8,10 +8,16 @@ NO_NEXT_LOCATION = 0
 class Country(models.Model):
     name = models.CharField(max_length=60, unique=True)
 
+    class Meta:
+        verbose_name_plural = "Countries"
+
 
 class City(models.Model):
     name = models.CharField(max_length=60, unique=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name_plural = "Cities"
 
 
 class District(models.Model):
@@ -32,19 +38,22 @@ class VehicleModel(models.Model):
     maximum_payload = models.PositiveSmallIntegerField()
 
 
-class VehicleOccupancy(models.Model):
-    length = models.PositiveSmallIntegerField()
-    width = models.PositiveSmallIntegerField()
-    height = models.PositiveSmallIntegerField()
-    mass = models.PositiveSmallIntegerField()
-
-
 class RoadFreightPark(models.Model):
     plate = models.CharField(max_length=20, unique=True)
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE)
-    vehicle_occupancy = models.ForeignKey(VehicleOccupancy, on_delete=models.CASCADE)
     temperature_control = models.BooleanField(default=False)
     dangerous_goods = models.BooleanField(default=False)
     driver = models.ForeignKey(User, default=DEFAULT_DRIVER, on_delete=models.SET_DEFAULT)
     location = models.ForeignKey(District, on_delete=models.CASCADE)
     route = models.ForeignKey(Route, on_delete=models.CASCADE)
+
+
+class Order(models.Model):
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    route = models.ManyToManyField(Route, default=None)
+    length = models.PositiveSmallIntegerField()
+    width = models.PositiveSmallIntegerField()
+    height = models.PositiveSmallIntegerField()
+    weight = models.PositiveSmallIntegerField()
+    temperature_control = models.BooleanField()
+    dangerous_goods = models.BooleanField()
