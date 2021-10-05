@@ -1,0 +1,12 @@
+[{
+  "model": "users.User",
+  "pk": 1,
+  "fields": {
+    "username": "Company",
+    "organization": "placeholder",
+    "email": "placeholder@placeholder.com",
+    "date_joined": "1970-01-01",
+    "last_login": "1970-01-01",
+    "password": "pbkdf2_sha256$260000$H7RQq2SYj1ggsj70XkvgT4$wv+V5tNrA7QtJjofmULJ1J5IH+Y+ZtHXQeQu5jA4fsI="
+  }
+}]
