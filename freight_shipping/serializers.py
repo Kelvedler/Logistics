@@ -69,11 +69,15 @@ class DistrictSerializer(serializers.ModelSerializer):
 
 
 class VehicleSerializer(DynamicFieldsModelSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super(VehicleSerializer, self).__init__(*args, **kwargs)
+        request = self.context['request']
+        if request.method in ['POST', 'PUT']:
+            self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
+            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+
     vehicle_model = get_model_serializer(models.VehicleModel)()
-    # location = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
-    # driver = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
-    # location = get_model_serializer(models.District)
-    # driver = get_model_serializer(user_models.User)
 
     class Meta:
         model = models.RoadFreightPark

@@ -1,8 +1,9 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from . import models
 from users import models as user_models
 from .serializers import CountrySerializer, CitySerializer, DistrictSerializer, VehicleSerializer
-from rest_framework import serializers
+from rest_framework import serializers, viewsets
+from rest_framework.response import Response
 
 
 class CountryList(generics.ListCreateAPIView):
@@ -63,14 +64,12 @@ class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DistrictSerializer
 
 
-class VehicleList(generics.ListCreateAPIView):
+class VehicleList(viewsets.ViewSet):
     queryset = models.RoadFreightPark.objects.all()
     serializer_class = VehicleSerializer
 
-    def get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        if self.request.method == 'GET':
-            kwargs['fields'] = [
+    def list(self, request):
+        fields = [
                 'id',
                 {'driver': ['id', 'username', 'organization']},
                 'plate',
@@ -79,8 +78,11 @@ class VehicleList(generics.ListCreateAPIView):
                 {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
                 {'location': ['id', 'name', 'city']},
             ]
-        else:
-            kwargs['fields'] = [
+        serializer = self.serializer_class(self.queryset, many=True, fields=fields, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def create(self, request):
+        fields = [
                 'id',
                 'driver',
                 'plate',
@@ -89,4 +91,8 @@ class VehicleList(generics.ListCreateAPIView):
                 {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
                 'location',
             ]
-        return serializer_class(*args, **kwargs)
+        serializer = self.serializer_class(data=request.data, fields=fields, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
