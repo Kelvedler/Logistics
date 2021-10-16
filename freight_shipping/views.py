@@ -4,6 +4,7 @@ from users import models as user_models
 from .serializers import CountrySerializer, CitySerializer, DistrictSerializer, VehicleSerializer
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 
 class CountryList(generics.ListCreateAPIView):
@@ -64,12 +65,11 @@ class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DistrictSerializer
 
 
-class VehicleList(viewsets.ViewSet):
+class VehicleSet(viewsets.ViewSet):
     queryset = models.RoadFreightPark.objects.all()
     serializer_class = VehicleSerializer
-
-    def list(self, request):
-        fields = [
+    fields = {
+        'detailed': [
                 'id',
                 {'driver': ['id', 'username', 'organization']},
                 'plate',
@@ -77,12 +77,8 @@ class VehicleList(viewsets.ViewSet):
                 'dangerous_goods',
                 {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
                 {'location': ['id', 'name', 'city']},
-            ]
-        serializer = self.serializer_class(self.queryset, many=True, fields=fields, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def create(self, request):
-        fields = [
+            ],
+        'basic': [
                 'id',
                 'driver',
                 'plate',
@@ -90,9 +86,52 @@ class VehicleList(viewsets.ViewSet):
                 'dangerous_goods',
                 {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
                 'location',
+            ],
+        'basic_no_id': [
+                'driver',
+                'plate',
+                'temperature_control',
+                'dangerous_goods',
+                {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
+                'location',
             ]
-        serializer = self.serializer_class(data=request.data, fields=fields, context={'request': request})
+    }
+
+    def list(self, request):
+        serializer = self.serializer_class(self.queryset,
+                                           many=True,
+                                           fields=self.fields['detailed'],
+                                           context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def create(self, request):
+        serializer = self.serializer_class(data=request.data,
+                                           fields=self.fields['basic'],
+                                           context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, pk=None):
+        vehicle = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.serializer_class(vehicle,
+                                           fields=self.fields['detailed'],
+                                           context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, pk=None):
+        vehicle = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.serializer_class(vehicle,
+                                           data=request.data,
+                                           fields=self.fields['basic_no_id'],
+                                           context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        vehicle = get_object_or_404(self.queryset, pk=pk)
+        vehicle.delete()
+        return Response(status=status.HTTP_200_OK)

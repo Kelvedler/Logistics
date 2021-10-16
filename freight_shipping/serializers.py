@@ -90,3 +90,11 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
             vehicle_model, _ = models.VehicleModel.objects.get_or_create(**vehicle_model_data)
             vehicle = models.RoadFreightPark.objects.create(vehicle_model=vehicle_model, **validated_data)
         return vehicle
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            vehicle_model_data = validated_data.pop('vehicle_model')
+            vehicle_model, _ = models.VehicleModel.objects.get_or_create(**vehicle_model_data)
+            validated_data['vehicle_model'] = vehicle_model
+            instance = serializers.ModelSerializer.update(self, instance, validated_data)
+            return instance
