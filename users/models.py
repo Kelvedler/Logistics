@@ -1,6 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
+CUSTOMER = 1
+
+USER_GROUPS = {
+    'Customer': 'C',
+    'Driver': 'D',
+    'Operator': 'O',
+    'Administrator': 'A',
+}
+
 
 class UserManager(BaseUserManager):
 
@@ -40,6 +49,12 @@ class User(AbstractBaseUser):
     username = models.CharField(max_length=40, unique=True)
     organization = models.CharField(max_length=40, blank=True)
     email = models.EmailField(max_length=60, unique=True)
+    group = models.CharField(max_length=1, default='C', choices=[
+        (USER_GROUPS['Customer'], 'Customer'),
+        (USER_GROUPS['Driver'], 'Driver'),
+        (USER_GROUPS['Operator'], 'Operator'),
+        (USER_GROUPS['Administrator'], 'Administrator')
+    ])
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now=True)
     is_admin = models.BooleanField(default=False, verbose_name='admin')

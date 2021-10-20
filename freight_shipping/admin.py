@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Country, City, District, Route, VehicleModel, RoadFreightPark, Order
+from django.contrib.auth.models import Permission
 
 
 class CountryAdmin(admin.ModelAdmin):
@@ -37,3 +38,4 @@ admin.site.register(Route, RouteAdmin)
 admin.site.register(VehicleModel, VehicleModelAdmin)
 admin.site.register(RoadFreightPark, RoadFreightParkAdmin)
 admin.site.register(Order, OrderAdmin)
+admin.site.register(Permission)

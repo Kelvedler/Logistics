@@ -5,8 +5,10 @@
     "username": "Company",
     "organization": "placeholder",
     "email": "placeholder@placeholder.com",
+    "group": "D",
     "date_joined": "1970-01-01",
     "last_login": "1970-01-01",
-    "password": "pbkdf2_sha256$260000$H7RQq2SYj1ggsj70XkvgT4$wv+V5tNrA7QtJjofmULJ1J5IH+Y+ZtHXQeQu5jA4fsI="
+    "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$SllDd05ETVZFMjBiSTkxZEo1ck1Mbw$QIGJvNgIIFJFP7Q0u0Q9+A"
   }
-}]
+}
+]

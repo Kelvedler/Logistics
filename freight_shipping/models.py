@@ -10,6 +10,10 @@ class Country(models.Model):
 
     class Meta:
         verbose_name_plural = "Countries"
+        default_permissions = ()
+
+    def __str__(self):
+        return self.name
 
 
 class City(models.Model):
@@ -18,16 +22,34 @@ class City(models.Model):
 
     class Meta:
         verbose_name_plural = "Cities"
+        default_permissions = ()
+
+    def __str__(self):
+        return self.name
 
 
 class District(models.Model):
     name = models.CharField(max_length=60, unique=True)
     city = models.ForeignKey(City, on_delete=models.CASCADE)
 
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return self.name
+
 
 class Route(models.Model):
     location = models.ForeignKey(District, on_delete=models.CASCADE)
     next_location = models.PositiveSmallIntegerField(default=NO_NEXT_LOCATION)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        if self.next_location:
+            return f'{self.location} - {self.next_location}'
+        return self.location
 
 
 class VehicleModel(models.Model):
@@ -37,15 +59,27 @@ class VehicleModel(models.Model):
     height = models.PositiveSmallIntegerField()
     maximum_payload = models.PositiveSmallIntegerField()
 
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f'{self.name} [capacity: {self.length}x{self.width}x{self.height}mm, payload: {self.maximum_payload}kg]'
+
 
 class RoadFreightPark(models.Model):
     plate = models.CharField(max_length=20, unique=True)
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.RESTRICT)
     temperature_control = models.BooleanField(default=False)
     dangerous_goods = models.BooleanField(default=False)
-    driver = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    driver = models.OneToOneField(User, null=True, on_delete=models.SET_NULL)
     location = models.ForeignKey(District, on_delete=models.RESTRICT)
     route = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return self.plate
 
 
 class Order(models.Model):
@@ -57,3 +91,9 @@ class Order(models.Model):
     weight = models.PositiveSmallIntegerField()
     temperature_control = models.BooleanField()
     dangerous_goods = models.BooleanField()
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f'# {self.id}'

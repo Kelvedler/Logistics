@@ -1,23 +1,27 @@
 from rest_framework import generics, status
-from . import models
+from . import models, permissions
 from users import models as user_models
 from .serializers import CountrySerializer, CitySerializer, DistrictSerializer, VehicleSerializer
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from users.views import CsrfExemptSessionAuthentication
 
 
 class CountryList(generics.ListCreateAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.Country.objects.all()
     serializer_class = CountrySerializer
 
 
 class CountryDetail(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.Country.objects.all()
     serializer_class = CountrySerializer
 
 
 class CityList(generics.ListCreateAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     def get_queryset(self):
         return super().get_queryset().filter(country=self.kwargs['country_id'])
 
@@ -30,6 +34,7 @@ class CityList(generics.ListCreateAPIView):
 
 
 class CityDetail(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     def get_queryset(self):
         return super().get_queryset().filter(country=self.kwargs['country_id'])
 
@@ -42,6 +47,7 @@ class CityDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class DistrictList(generics.ListCreateAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     def get_queryset(self):
         return super().get_queryset().filter(city=self.kwargs['city_id'])
 
@@ -54,6 +60,7 @@ class DistrictList(generics.ListCreateAPIView):
 
 
 class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     def get_queryset(self):
         return super().get_queryset().filter(city=self.kwargs['city_id'])
 
@@ -68,6 +75,8 @@ class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
 class VehicleSet(viewsets.ViewSet):
     queryset = models.RoadFreightPark.objects.all()
     serializer_class = VehicleSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.VehiclePermission]
     fields = {
         'detailed': [
                 'id',
@@ -105,6 +114,7 @@ class VehicleSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
+        self.check_object_permissions(request=request, obj=None)
         serializer = self.serializer_class(data=request.data,
                                            fields=self.fields['basic'],
                                            context={'request': request})
@@ -122,6 +132,7 @@ class VehicleSet(viewsets.ViewSet):
 
     def update(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
+        self.check_object_permissions(request=request, obj=vehicle)
         serializer = self.serializer_class(vehicle,
                                            data=request.data,
                                            fields=self.fields['basic_no_id'],
