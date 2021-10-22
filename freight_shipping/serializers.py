@@ -75,7 +75,8 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
         request = self.context['request']
         if request.method in ['POST', 'PUT']:
             self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
-            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(), required=False)
+            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
+                                                                       required=False)
 
     vehicle_model = get_model_serializer(models.VehicleModel)()
 

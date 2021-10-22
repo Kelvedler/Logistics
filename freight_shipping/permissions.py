@@ -25,7 +25,6 @@ class GroupBasePermission(permissions.BasePermission):
 
 
 class VehiclePermission(GroupBasePermission):
-    allow_get_for = [USER_GROUPS['Driver'], USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
     allow_post_for = [USER_GROUPS['Driver'], USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
     allow_put_for = [USER_GROUPS['Driver'], USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
     allow_delete_for = [USER_GROUPS['Operator'], USER_GROUPS['Administrator']]

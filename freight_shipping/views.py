@@ -6,6 +6,7 @@ from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from users.views import CsrfExemptSessionAuthentication
+from users.models import USER_GROUPS
 
 
 class CountryList(generics.ListCreateAPIView):
@@ -103,7 +104,15 @@ class VehicleSet(viewsets.ViewSet):
                 'dangerous_goods',
                 {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
                 'location',
-            ]
+            ],
+        'detailed_for_customer': [
+            'id',
+            'temperature_control',
+            'dangerous_goods',
+            {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
+            'location',
+            {'route': ['location', 'next_location']},
+        ]
     }
 
     def list(self, request):
@@ -125,8 +134,12 @@ class VehicleSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
+        if not request.user == 'AnonymousUser' or (request.user.group == USER_GROUPS['Customer']):
+            fields = self.fields['detailed_for_customer']
+        else:
+            fields = self.fields['detailed']
         serializer = self.serializer_class(vehicle,
-                                           fields=self.fields['detailed'],
+                                           fields=fields,
                                            context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -146,3 +159,23 @@ class VehicleSet(viewsets.ViewSet):
         vehicle = get_object_or_404(self.queryset, pk=pk)
         vehicle.delete()
         return Response(status=status.HTTP_200_OK)
+
+
+class VehicleLocationSet(viewsets.ViewSet):
+    queryset = models.RoadFreightPark.objects
+    serializer_class = VehicleSerializer
+    fields = {
+        'basic': [
+            'temperature_control',
+            'dangerous_goods',
+            {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
+            {'route': ['location', 'next_location']},
+        ]
+    }
+
+    def list(self, request, location_id=None):
+        serializer = self.serializer_class(self.queryset.filter(location=location_id),
+                                           many=True,
+                                           fields=self.fields['basic'],
+                                           context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
