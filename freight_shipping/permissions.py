@@ -19,6 +19,8 @@ class GroupBasePermission(permissions.BasePermission):
         allowed_groups = method_group_dict[request.method]
         if 'all' in allowed_groups:
             return True
+        elif str(request.user) == 'AnonymousUser':
+            return False
         if request.user.group not in allowed_groups:
             return False
         return True

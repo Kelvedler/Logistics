@@ -1,9 +1,6 @@
 from django.db import models
 from users.models import User
 
-DEFAULT_DRIVER = 1
-NO_NEXT_LOCATION = 0
-
 
 class Country(models.Model):
     name = models.CharField(max_length=60, unique=True)
@@ -39,19 +36,6 @@ class District(models.Model):
         return self.name
 
 
-class Route(models.Model):
-    location = models.ForeignKey(District, on_delete=models.CASCADE)
-    next_location = models.PositiveSmallIntegerField(default=NO_NEXT_LOCATION)
-
-    class Meta:
-        default_permissions = ()
-
-    def __str__(self):
-        if self.next_location:
-            return f'{self.location} - {self.next_location}'
-        return self.location
-
-
 class VehicleModel(models.Model):
     name = models.CharField(max_length=60)
     length = models.PositiveSmallIntegerField()
@@ -66,20 +50,31 @@ class VehicleModel(models.Model):
         return f'{self.name} [capacity: {self.length}x{self.width}x{self.height}mm, payload: {self.maximum_payload}kg]'
 
 
-class RoadFreightPark(models.Model):
+class Vehicle(models.Model):
     plate = models.CharField(max_length=20, unique=True)
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.RESTRICT)
     temperature_control = models.BooleanField(default=False)
     dangerous_goods = models.BooleanField(default=False)
     driver = models.OneToOneField(User, null=True, on_delete=models.SET_NULL)
     location = models.ForeignKey(District, on_delete=models.RESTRICT)
-    route = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL)
 
     class Meta:
         default_permissions = ()
 
     def __str__(self):
         return self.plate
+
+
+class Route(models.Model):
+    location = models.ForeignKey(District, on_delete=models.CASCADE)
+    next_route_id = models.PositiveSmallIntegerField(null=True)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='route')
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f'{self.location} ({self.vehicle})'
 
 
 class Order(models.Model):

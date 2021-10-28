@@ -5,6 +5,8 @@ from rest_framework import routers
 router = routers.SimpleRouter()
 router.register('vehicle', views.VehicleSet)
 router.register(r'location/(?P<location_id>\d+)/vehicle', views.VehicleLocationSet)
+router.register('order', views.OrderSet)
+router.register('route', views.RouteSet)
 
 urlpatterns = [
     path('country/', views.CountryList.as_view()),
