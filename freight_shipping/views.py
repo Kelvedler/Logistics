@@ -130,10 +130,12 @@ class VehicleSet(viewsets.ViewSet):
 
 
 class VehicleLocationSet(viewsets.ViewSet):
+    view_name = 'VehicleLocationSet'
     queryset = models.Vehicle.objects
     serializer_class = serializers.VehicleSerializer
     fields = {
         'basic': [
+            'id',
             'temperature_control',
             'dangerous_goods',
             {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
@@ -141,11 +143,15 @@ class VehicleLocationSet(viewsets.ViewSet):
         ]
     }
 
-    def list(self, request, location_id=None):
-        serializer = self.serializer_class(self.queryset.filter(location=location_id),
+    def list(self, request, departure_id=None, destination_id=None):
+        districts_in_db = models.District.objects.filter(id__in=[departure_id, destination_id]).all()
+        if len(districts_in_db) == 0 or departure_id != destination_id and len(districts_in_db) == 1:
+            return Response({'message': 'Invalid route'}, status=status.HTTP_400_BAD_REQUEST)
+        print(self.queryset.filter(route__location_id__in=[departure_id, destination_id]))
+        serializer = self.serializer_class(self.queryset.filter(route__location__in=[departure_id, destination_id]),
                                            many=True,
                                            fields=self.fields['basic'],
-                                           context={'request': request})
+                                           context={'action': self.action, 'serializer': self.view_name})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

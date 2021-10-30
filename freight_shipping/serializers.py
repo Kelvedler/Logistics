@@ -1,7 +1,7 @@
 import copy
-from . import models
+from . import models, views
 from users import models as user_models
-from rest_framework import serializers
+from rest_framework import serializers, validators
 from django.db import transaction
 
 
@@ -14,7 +14,7 @@ def get_model_serializer(set_model, set_fields='__all__', **nested_serializers):
             def set_nested_fields():
                 for field, serializer in nested_serializers.items():
                     self.fields[field] = serializer
-                    serializer.source = None
+                    serializer.source = None  # TODO remove it somehow
 
             super(ModelSerializer, self).__init__(*args, **kwargs)
             if nested_serializers:
@@ -92,7 +92,9 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
         action = self.context['action']
         if action in ['create', 'update']:
             self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
-            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
+            # unique = validators.UniqueValidator(queryset=user_models.User.objects.all(),
+            #                                     message='Driver can have only one vehicle')
+            self.fields['user'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
                                                                        required=False)
         elif action == 'list':
             self.fields['location'] = get_model_serializer(models.District)()
@@ -144,8 +146,54 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
             iterator -= 1
         return [{'index': i, 'location': item} for i, item in enumerate(ordered_route)]
 
+    @staticmethod
+    def calculate_truck_load(length, width, height, maximum_payload, *cargo):
+        euro_1_pallet = {'length': 1200, 'width': 800, 'maximum_payload': 1500, 'weight': 25}
+        euro_6_pallet = {'length': 800, 'width': 600, 'maximum_payload': 500, 'weight': 10}
+        euro_1_cargo = []
+        euro_6_cargo = []
+        for unit in cargo:
+            if unit['length'] < unit['width']:
+                unit['length'], unit['width'] = unit['width'], unit['length']
+
+            if unit['height'] > height:
+                raise Exception  # TODO sane exception
+            elif unit['length'] <= euro_6_pallet['length'] and\
+                    unit['width'] <= euro_6_pallet['width'] and\
+                    unit['weight'] <= euro_6_pallet['maximum_payload']:
+                euro_6_cargo.append(unit['weight'] + euro_6_pallet['weight'])
+            elif unit['length'] <= euro_1_pallet['length'] and\
+                    unit['width'] <= euro_1_pallet['width'] and\
+                    unit['weight'] <= euro_1_pallet['maximum_payload']:
+                euro_1_cargo.append(unit['weight'] + euro_1_pallet['weight'])
+            else:
+                raise Exception  # TODO sane exception
+
+        leftover_payload = maximum_payload - (sum(euro_1_cargo) + sum(euro_6_cargo))
+
+        euro_1_pallet_space = length // euro_1_pallet['length']
+        euro_6_pallet_space = length // euro_1_pallet['length'] % euro_6_pallet['length']
+        if width > euro_1_pallet['width'] * 2:
+            euro_1_pallet_space *= 2
+            euro_6_pallet_space *= 2
+        euro_1_pallet_space -= len(euro_1_cargo)
+        if euro_6_pallet_space >= euro_6_cargo:
+            euro_6_pallet_space -= len(euro_6_cargo)
+        else:
+            used_space = euro_1_pallet_space * 2 + euro_6_pallet_space - len(euro_6_cargo)
+            euro_1_pallet_space = used_space // 2
+            euro_6_pallet_space = used_space % 2
+        if euro_1_pallet_space > 0:
+            return euro_1_pallet['length'], euro_1_pallet['width'], leftover_payload
+        elif euro_6_pallet_space > 0:
+            return euro_6_pallet['length'], euro_6_pallet['width'], leftover_payload
+        else:
+            return 0, 0, 0
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        if self.context.get('serializer') == views.VehicleLocationSet.view_name:
+            pass  # TODO add volume calculation algorithm
         if self.context['action'] == 'retrieve':
             representation['route'] = self.order_route(representation.pop('route'))
         return representation

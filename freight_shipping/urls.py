@@ -4,7 +4,7 @@ from rest_framework import routers
 
 router = routers.SimpleRouter()
 router.register('vehicle', views.VehicleSet)
-router.register(r'location/(?P<location_id>\d+)/vehicle', views.VehicleLocationSet)
+router.register(r'departure/(?P<departure_id>\d+)/destination/(?P<destination_id>\d+)/vehicle', views.VehicleLocationSet)
 router.register('order', views.OrderSet)
 router.register('route', views.RouteSet)
 
