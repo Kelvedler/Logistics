@@ -1,7 +1,7 @@
 import copy
 from . import models, views
 from users import models as user_models
-from rest_framework import serializers, validators
+from rest_framework import serializers, exceptions
 from django.db import transaction
 
 
@@ -14,7 +14,7 @@ def get_model_serializer(set_model, set_fields='__all__', **nested_serializers):
             def set_nested_fields():
                 for field, serializer in nested_serializers.items():
                     self.fields[field] = serializer
-                    serializer.source = None  # TODO remove it somehow
+                    serializer.source = None
 
             super(ModelSerializer, self).__init__(*args, **kwargs)
             if nested_serializers:
@@ -92,9 +92,7 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
         action = self.context['action']
         if action in ['create', 'update']:
             self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
-            # unique = validators.UniqueValidator(queryset=user_models.User.objects.all(),
-            #                                     message='Driver can have only one vehicle')
-            self.fields['user'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
+            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
                                                                        required=False)
         elif action == 'list':
             self.fields['location'] = get_model_serializer(models.District)()
@@ -107,11 +105,17 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
         fields = '__all__'
         depth = 2
 
+    def validate(self, attrs):
+        driver = attrs['driver']
+        if driver.vehicle:
+            raise exceptions.ValidationError(detail='Driver can have only one vehicle')
+
     def create(self, validated_data):
         with transaction.atomic():
             vehicle_model_data = validated_data.pop('vehicle_model')
             vehicle_model, _ = models.VehicleModel.objects.get_or_create(**vehicle_model_data)
-            vehicle = models.Vehicle.objects.create(vehicle_model=vehicle_model, **validated_data)
+            driver = validated_data.pop('driver')
+            vehicle = models.Vehicle.objects.create(driver_id=driver.id, vehicle_model=vehicle_model, **validated_data)
         return vehicle
 
     def update(self, instance, validated_data):

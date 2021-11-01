@@ -1,51 +1,22 @@
 vehicle_fields = {
-    'list': [
-        'id',
-        {'driver': ['id', 'username', 'organization']},
-        'plate',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        {'location': ['id', 'name', 'city']},
-    ],
-    'list_for_customer': [
-        'id',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        {'location': ['id', 'name', 'city']},
-    ],
-    'detailed': [
-        'id',
-        {'driver': ['id', 'username', 'organization']},
-        'plate',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        {'route': ['id', {'location': ['id', 'name']}, 'next_route_id']},
-    ],
-    'detailed_for_customer': [
-        'id',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        {'route': ['id', {'location': ['id', 'name']}, 'next_route_id']}
-    ],
-    'basic': [
-        'id',
-        'driver',
-        'plate',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        'location',
-    ],
-    'basic_no_id': [
-        'driver',
-        'plate',
-        'temperature_control',
-        'dangerous_goods',
-        {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        'location',
-    ],
+    'basic': {
+        'id': 'id',
+        'driver': 'driver',
+        'plate': 'plate',
+        'temperature_control': 'temperature_control',
+        'dangerous_goods': 'dangerous_goods',
+        'vehicle_model': {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
+        'location': 'location'
+
+    },
+    'detailed': {
+        'id': 'id',
+        'driver': {'driver': ['id', 'username', 'organization']},
+        'plate': 'plate',
+        'temperature_control': 'temperature_control',
+        'dangerous_goods': 'dangerous_goods',
+        'vehicle_model': {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
+        'location': 'location',
+        'route': {'route': ['id', {'location': ['id', 'name']}, 'next_route_id']},
+    }
 }

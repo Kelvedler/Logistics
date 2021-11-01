@@ -22,6 +22,7 @@ class CountryDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class CityList(generics.ListCreateAPIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
+
     def get_queryset(self):
         return super().get_queryset().filter(country=self.kwargs['country_id'])
 
@@ -35,6 +36,7 @@ class CityList(generics.ListCreateAPIView):
 
 class CityDetail(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
+
     def get_queryset(self):
         return super().get_queryset().filter(country=self.kwargs['country_id'])
 
@@ -48,6 +50,7 @@ class CityDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class DistrictList(generics.ListCreateAPIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
+
     def get_queryset(self):
         return super().get_queryset().filter(city=self.kwargs['city_id'])
 
@@ -61,6 +64,7 @@ class DistrictList(generics.ListCreateAPIView):
 
 class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
+
     def get_queryset(self):
         return super().get_queryset().filter(city=self.kwargs['city_id'])
 
@@ -80,20 +84,20 @@ class VehicleSet(viewsets.ViewSet):
     fields = fields.vehicle_fields
 
     def list(self, request):
-        if str(request.user) == 'AnonymousUser' or request.user.group == USER_GROUPS['Customer']:
-            fields = self.fields['list_for_customer']
-        else:
-            fields = self.fields['list']
+        detailed_fields = [field for key, field in self.fields['detailed'].items() if
+                           key not in request.query_params.getlist('exclude')]
         serializer = self.serializer_class(self.queryset,
                                            many=True,
-                                           fields=fields,
+                                           fields=detailed_fields,
                                            context={'action': self.action})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
         self.check_object_permissions(request=request, obj=None)
+        basic_fields = [field for key, field in self.fields['detailed'].items() if
+                        key not in request.query_params.getlist('exclude')]
         serializer = self.serializer_class(data=request.data,
-                                           fields=self.fields['basic'],
+                                           fields=basic_fields,
                                            context={'action': self.action})
         if serializer.is_valid():
             serializer.save()
@@ -102,21 +106,21 @@ class VehicleSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
-        if str(request.user) == 'AnonymousUser' or request.user.group == USER_GROUPS['Customer']:
-            fields = self.fields['detailed_for_customer']
-        else:
-            fields = self.fields['detailed']
+        detailed_fields = [field for key, field in self.fields['detailed'].items() if
+                           key not in request.query_params.getlist('exclude')]
         serializer = self.serializer_class(vehicle,
-                                           fields=fields,
+                                           fields=detailed_fields,
                                            context={'action': self.action})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
         self.check_object_permissions(request=request, obj=vehicle)
+        basic_fields = [field for key, field in self.fields['detailed'].items() if
+                        key not in request.query_params.getlist('exclude')]
         serializer = self.serializer_class(vehicle,
                                            data=request.data,
-                                           fields=self.fields['basic_no_id'],
+                                           fields=basic_fields,
                                            context={'action': self.action})
         if serializer.is_valid():
             serializer.save()
