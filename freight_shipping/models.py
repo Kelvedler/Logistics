@@ -84,8 +84,8 @@ class Order(models.Model):
     width = models.PositiveSmallIntegerField()
     height = models.PositiveSmallIntegerField()
     weight = models.PositiveSmallIntegerField()
-    temperature_control = models.BooleanField()
-    dangerous_goods = models.BooleanField()
+    temperature_control = models.BooleanField(default=False)
+    dangerous_goods = models.BooleanField(default=False)
 
     class Meta:
         default_permissions = ()

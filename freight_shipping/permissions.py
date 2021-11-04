@@ -40,3 +40,13 @@ class VehiclePermission(GroupBasePermission):
             self.message = 'Permission denied, driver can only register/edit his/her own vehicle'
             return False
         return True
+
+
+class OrderPermission(GroupBasePermission):
+    allow_post_for = [USER_GROUPS['Customer']]
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.id != request.data.get('customer'):
+            self.message = 'Permission denied, customer can only place order on his/her name'
+            return False
+        return True

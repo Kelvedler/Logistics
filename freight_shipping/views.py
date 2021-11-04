@@ -84,18 +84,22 @@ class VehicleSet(viewsets.ViewSet):
     fields = fields.vehicle_fields
 
     def list(self, request):
+        excluded_fields = request.query_params.getlist('exclude')
         detailed_fields = [field for key, field in self.fields['detailed'].items() if
-                           key not in request.query_params.getlist('exclude')]
+                           key not in excluded_fields]
         serializer = self.serializer_class(self.queryset,
                                            many=True,
                                            fields=detailed_fields,
-                                           context={'action': self.action})
+                                           context={'action': self.action, 'excluded_fields': excluded_fields})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
+        if not request.data.get('driver') and request.user.group == USER_GROUPS['Driver']:
+            request.data['driver'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
-        basic_fields = [field for key, field in self.fields['detailed'].items() if
-                        key not in request.query_params.getlist('exclude')]
+        excluded_fields = request.query_params.getlist('exclude')
+        basic_fields = [field for key, field in self.fields['basic'].items() if
+                        key not in excluded_fields]
         serializer = self.serializer_class(data=request.data,
                                            fields=basic_fields,
                                            context={'action': self.action})
@@ -106,8 +110,9 @@ class VehicleSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
+        excluded_fields = request.query_params.getlist('exclude')
         detailed_fields = [field for key, field in self.fields['detailed'].items() if
-                           key not in request.query_params.getlist('exclude')]
+                           key not in excluded_fields]
         serializer = self.serializer_class(vehicle,
                                            fields=detailed_fields,
                                            context={'action': self.action})
@@ -116,8 +121,9 @@ class VehicleSet(viewsets.ViewSet):
     def update(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
         self.check_object_permissions(request=request, obj=vehicle)
-        basic_fields = [field for key, field in self.fields['detailed'].items() if
-                        key not in request.query_params.getlist('exclude')]
+        excluded_fields = request.query_params.getlist('exclude')
+        basic_fields = [field for key, field in self.fields['basic'].items() if
+                        key not in excluded_fields]
         serializer = self.serializer_class(vehicle,
                                            data=request.data,
                                            fields=basic_fields,
@@ -137,37 +143,42 @@ class VehicleLocationSet(viewsets.ViewSet):
     view_name = 'VehicleLocationSet'
     queryset = models.Vehicle.objects
     serializer_class = serializers.VehicleSerializer
-    fields = {
-        'basic': [
-            'id',
-            'temperature_control',
-            'dangerous_goods',
-            {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-            {'route': ['location', 'next_location']},
-        ]
-    }
+    fields = fields.vehicle_fields
 
     def list(self, request, departure_id=None, destination_id=None):
         districts_in_db = models.District.objects.filter(id__in=[departure_id, destination_id]).all()
         if len(districts_in_db) == 0 or departure_id != destination_id and len(districts_in_db) == 1:
             return Response({'message': 'Invalid route'}, status=status.HTTP_400_BAD_REQUEST)
-        print(self.queryset.filter(route__location_id__in=[departure_id, destination_id]))
-        serializer = self.serializer_class(self.queryset.filter(route__location__in=[departure_id, destination_id]),
-                                           many=True,
-                                           fields=self.fields['basic'],
-                                           context={'action': self.action, 'serializer': self.view_name})
+        excluded_fields = request.query_params.getlist('exclude')
+        detailed_fields = [field for key, field in self.fields['detailed'].items() if
+                           key not in excluded_fields]
+        serializer = self.serializer_class(
+            self.queryset.filter(route__location__in=[departure_id, destination_id]).distinct('id'),
+            many=True,
+            fields=detailed_fields,
+            context={'action': self.action, 'serializer': self.view_name,
+                     'excluded_fields': excluded_fields})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class OrderSet(viewsets.ViewSet):
     queryset = models.Order.objects
     serializer_class = serializers.OrderSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.OrderPermission]
 
     def list(self, request):
         serializer = self.serializer_class(self.queryset.all(), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
+        # if request.data.get('route'):
+        #     cargo_on_route = models.Order.objects.filter(route=request.data.get('route').get('departure'))
+        # else:
+        #     cargo_on_route = None
+        if not request.data.get('customer'):
+            request.data['customer'] = request.user.id
+        self.check_object_permissions(request=request, obj=None)
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
