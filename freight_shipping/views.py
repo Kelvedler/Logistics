@@ -1,11 +1,13 @@
 from rest_framework import generics, status
 from . import models, permissions, fields, serializers
 from users import models as user_models
-from rest_framework import viewsets
+from rest_framework import viewsets, exceptions as rest_framework_exceptions
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from users.views import CsrfExemptSessionAuthentication
 from users.models import USER_GROUPS
+from django.db.models import Q
+from django.core import exceptions as django_exceptions
 
 
 class CountryList(generics.ListCreateAPIView):
@@ -145,20 +147,27 @@ class VehicleLocationSet(viewsets.ViewSet):
     serializer_class = serializers.VehicleSerializer
     fields = fields.vehicle_fields
 
-    def list(self, request, departure_id=None, destination_id=None):
-        districts_in_db = models.District.objects.filter(id__in=[departure_id, destination_id]).all()
-        if len(districts_in_db) == 0 or departure_id != destination_id and len(districts_in_db) == 1:
-            return Response({'message': 'Invalid route'}, status=status.HTTP_400_BAD_REQUEST)
+    def list(self, request, departure_id=None, destination_id=None, order_id=None):
         excluded_fields = request.query_params.getlist('exclude')
         detailed_fields = [field for key, field in self.fields['detailed'].items() if
                            key not in excluded_fields]
+        try:
+            pending_order = models.Order.objects.get(pk=order_id)
+        except django_exceptions.ObjectDoesNotExist:
+            raise rest_framework_exceptions.ValidationError(detail={'order': 'Invalid ID'})
+        filters = (Q(route__location=departure_id) | Q(location=departure_id))
+        if pending_order.temperature_control:
+            filters &= Q(temperature_control=True)
+        if pending_order.dangerous_goods:
+            filters &= Q(dangerous_goods=True)
         serializer = self.serializer_class(
-            self.queryset.filter(route__location__in=[departure_id, destination_id]).distinct('id'),
+            self.queryset.filter(filters).distinct('id'),
             many=True,
             fields=detailed_fields,
             context={'action': self.action, 'serializer': self.view_name,
-                     'excluded_fields': excluded_fields})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+                     'excluded_fields': excluded_fields, 'departure_id': departure_id, 'destination_id': destination_id,
+                     'pending_order': pending_order})
+        return Response([obj for obj in serializer.data if obj], status=status.HTTP_200_OK)
 
 
 class OrderSet(viewsets.ViewSet):
@@ -172,10 +181,6 @@ class OrderSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
-        # if request.data.get('route'):
-        #     cargo_on_route = models.Order.objects.filter(route=request.data.get('route').get('departure'))
-        # else:
-        #     cargo_on_route = None
         if not request.data.get('customer'):
             request.data['customer'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
