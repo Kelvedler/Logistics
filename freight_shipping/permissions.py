@@ -44,6 +44,7 @@ class VehiclePermission(GroupBasePermission):
 
 class OrderPermission(GroupBasePermission):
     allow_post_for = [USER_GROUPS['Customer']]
+    allow_put_for = [USER_GROUPS['Customer']]
 
     def has_object_permission(self, request, view, obj):
         if request.user.id != request.data.get('customer'):

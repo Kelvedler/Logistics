@@ -4,6 +4,7 @@ from . import models, views
 from users import models as user_models
 from rest_framework import serializers, exceptions as rest_framework_exceptions
 from django.db import transaction
+from django.core import exceptions as django_exceptions
 
 
 def validate_structure(element, structure, data):
@@ -76,19 +77,58 @@ def calculate_truck_load(length, width, height, maximum_payload, *cargo):
     if width > euro_1_pallet['width'] * 2:
         euro_1_pallet_space *= 2
         euro_6_pallet_space *= 2
-    euro_1_pallet_space -= len(euro_1_cargo)
-    if euro_6_pallet_space >= len(euro_6_cargo):
-        euro_6_pallet_space -= len(euro_6_cargo)
-    else:
-        used_space = euro_1_pallet_space * 2 + euro_6_pallet_space - len(euro_6_cargo)
-        euro_1_pallet_space = used_space // 2
-        euro_6_pallet_space = used_space % 2
-    if euro_1_pallet_space > 0:
+    used_space = len(euro_1_cargo) * 2 + len(euro_6_cargo)
+    vehicle_capacity = euro_1_pallet_space * 2 + euro_6_pallet_space
+    leftover_space = vehicle_capacity - used_space
+    if leftover_space > 1:
         return euro_1_pallet['length'], euro_1_pallet['width'], leftover_payload
-    elif euro_6_pallet_space > 0:
+    elif leftover_space > 0:
         return euro_6_pallet['length'], euro_6_pallet['width'], leftover_payload
     else:
         return 0, 0, 0
+
+
+def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_width, order_weight):
+    route = []
+    orders_in_route = models.Order.objects.filter(
+        route__in=[route['id'] for route in ordered_route]).distinct()
+    for order_instance in ordered_route:
+        order_measurements = []
+        for order in orders_in_route:
+            for route_in_order in order.route.all():
+                if route_in_order.id == order_instance['id']:
+                    order_measurements.append(
+                        {'length': order.length, 'width': order.width, 'height': order.height,
+                         'weight': order.weight})
+        if order_measurements:
+            leftover_length, leftover_width, leftover_payload = calculate_truck_load(vehicle_model.length,
+                                                                                     vehicle_model.width,
+                                                                                     vehicle_model.height,
+                                                                                     vehicle_model.maximum_payload,
+                                                                                     *order_measurements)
+            if leftover_length >= order_length and \
+                    leftover_width >= order_width and \
+                    leftover_payload >= order_weight:
+                order_instance['full'] = False
+            else:
+                order_instance['full'] = True
+        else:
+            order_instance['full'] = False
+        route.append(order_instance)
+    return route
+
+
+def validate_order_on_route(checked_route, departure_id: int, destination_id: int):
+    valid_departure, valid_destination = False, False
+    for waypoint in checked_route:
+        if waypoint['full']:
+            valid_departure = False
+        elif waypoint['location']['id'] == departure_id:
+            valid_departure = True
+        elif waypoint['location']['id'] == destination_id and valid_departure:
+            valid_destination = True
+            break
+    return valid_departure, valid_destination
 
 
 def order_route(route):
@@ -100,7 +140,7 @@ def order_route(route):
     iterator = len(route)
     while route:
         if iterator < 0:
-            return {'message': 'Bad Data'}
+            raise rest_framework_exceptions.ValidationError(detail={"route": "Bad data"})
         route = copy.copy(route_copy)
         route_copy.clear()
         for i, item in enumerate(route):
@@ -247,41 +287,12 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
                     pending_order.length, pending_order.width = pending_order.width, pending_order.length
                 vehicle_model = instance.vehicle_model
                 ordered_route = order_route(representation.pop('route'))
-                representation['route'] = []
-                orders_in_route = models.Order.objects.filter(
-                    route__in=[route['id'] for route in ordered_route]).distinct()
-                for order_instance in ordered_route:
-                    order_measurements = []
-                    for order in orders_in_route:
-                        for route_in_order in order.route.all():
-                            if route_in_order.id == order_instance['id']:
-                                order_measurements.append(
-                                    {'length': order.length, 'width': order.width, 'height': order.height,
-                                     'weight': order.weight})
-                    if order_measurements:
-                        leftover_length, leftover_width, leftover_payload = calculate_truck_load(vehicle_model.length,
-                                                                                                 vehicle_model.width,
-                                                                                                 vehicle_model.height,
-                                                                                                 vehicle_model.maximum_payload,
-                                                                                                 *order_measurements)
-                        if leftover_length >= pending_order.length and\
-                                leftover_width >= pending_order.width and\
-                                leftover_payload >= pending_order.weight:
-                            order_instance['full'] = False
-                        else:
-                            order_instance['full'] = True
-                    else:
-                        order_instance['full'] = False
-                    representation['route'].append(order_instance)
-                valid_route = False
-                for waypoint in representation['route']:
-                    if waypoint['full']:
-                        valid_route = False
-                    elif waypoint['location']['id'] == int(self.context.get('departure_id')):
-                        valid_route = True
-                    elif waypoint['location']['id'] == int(self.context.get('destination_id')) and valid_route:
-                        break
-                if not valid_route:
+                representation['route'] = check_if_route_is_full(ordered_route, vehicle_model, pending_order.length,
+                                                                 pending_order.width, pending_order.weight)
+                valid_departure, _ = validate_order_on_route(representation['route'],
+                                                             int(self.context.get('departure_id')),
+                                                             int(self.context.get('destination_id')))
+                if not valid_departure:
                     return None
         if self.context.get('action') == 'retrieve':
             representation['route'] = order_route(representation.pop('route'))
@@ -294,8 +305,32 @@ class OrderSerializer(DynamicFieldsModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        # if attrs.get('route'):
-        #     raise rest_framework_exceptions.ValidationError(detail='Could not place the order, vehicle is full')
+        if attrs.get('route'):
+            try:
+                departure = models.Route.objects.get(pk=attrs['route'][0].id)
+            except django_exceptions.ObjectDoesNotExist:
+                raise rest_framework_exceptions.ValidationError(detail={'departure': 'Object not found'})
+            route = models.Route.objects.filter(vehicle_id=departure.vehicle)
+            ordered_route = order_route(
+                [{'location': {'id': point['location_id']}, **{key: point[key] for key in point if key != 'location_id'}} for
+                 point in route.values()])
+            departure_index, destination_index, departure_id, destination_id = 0, 0, None, None
+            for point in ordered_route:
+                if point['id'] == attrs['route'][0].id:
+                    departure_index, departure_id = point['index'], point['location']['id']
+                elif point['id'] == attrs['route'][1].id:
+                    destination_index, destination_id = point['index'], point['location']['id']
+            if destination_index == 0:
+                raise rest_framework_exceptions.ValidationError(detail={'destination': 'Object not found'})
+            if departure_index > destination_index:
+                raise rest_framework_exceptions.ValidationError(
+                    detail={'route': 'Departure should come before destination'})
+            checked_route = check_if_route_is_full(ordered_route, departure.vehicle.vehicle_model, attrs['length'],
+                                                   attrs['width'],
+                                                   attrs['weight'])
+            valid_departure, valid_destination = validate_order_on_route(checked_route, departure_id, destination_id)
+            if not valid_departure or not valid_destination:
+                raise rest_framework_exceptions.ValidationError(detail='Could not place the order, vehicle is full')
         return attrs
 
     def to_internal_value(self, data):
@@ -310,6 +345,33 @@ class OrderSerializer(DynamicFieldsModelSerializer):
 
 
 class RouteSerializer(DynamicFieldsModelSerializer):
+
     class Meta:
         model = models.Route
         fields = '__all__'
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            route = models.Route.objects.filter(vehicle_id=validated_data['vehicle'].id)
+            route_to_order = [
+                {'location': point['location_id'], **{key: point[key] for key in point if key != 'location_id'}} for
+                point in route.values()]
+            if route_to_order:
+                last_route = order_route(list(route_to_order))[-1]
+                if last_route['location'] == validated_data['location'].id:
+                    raise rest_framework_exceptions.ValidationError({'location': 'location is identical to previous one'})
+            new_route_point = models.Route.objects.create(**validated_data)
+            if route_to_order:
+                for point in route:
+                    if point.id == last_route['id']:
+                        point.next_route_id = new_route_point.id
+                        point.save()
+            return new_route_point
+
+    def validate(self, attrs):
+        if attrs.get('next_route_id'):
+            try:
+                models.Route.objects.get(pk=attrs['next_route_id'])
+            except django_exceptions.ObjectDoesNotExist:
+                raise rest_framework_exceptions.ValidationError(detail='next_route_id object does not exist')
+        return attrs
