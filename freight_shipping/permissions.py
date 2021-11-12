@@ -43,11 +43,20 @@ class VehiclePermission(GroupBasePermission):
 
 
 class OrderPermission(GroupBasePermission):
+    allow_get_for = [USER_GROUPS['Customer'], USER_GROUPS['Driver'], USER_GROUPS['Operator']]
     allow_post_for = [USER_GROUPS['Customer']]
     allow_put_for = [USER_GROUPS['Customer']]
+    allow_delete_for = [USER_GROUPS['Customer'], USER_GROUPS['Operator']]
 
     def has_object_permission(self, request, view, obj):
-        if request.user.id != request.data.get('customer'):
-            self.message = 'Permission denied, customer can only place order on his/her name'
-            return False
+        if request.method in ['POST', 'PUT']:
+            if request.user.id != request.data.get('customer'):
+                self.message = 'Permission denied, customer can only place order on his/her name'
+                return False
+        elif request.method in ['GET', 'DELETE']:
+            if request.user.id != obj.customer.id and request.user.group == USER_GROUPS['Customer']:
+                error_dict = {'GET': 'view', 'DELETE': 'delete'}
+                self.message = 'Permission denied, customer can {} only his/her own orders.'.format(
+                    error_dict[request.method])
+                return False
         return True

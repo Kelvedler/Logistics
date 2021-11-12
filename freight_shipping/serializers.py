@@ -8,7 +8,6 @@ from django.core import exceptions as django_exceptions
 
 
 def validate_structure(element, structure, data):
-
     def get_type_error(element, expected, got):
 
         def cut_out_type(route_type) -> str:
@@ -59,7 +58,7 @@ def calculate_truck_load(length, width, height, maximum_payload, *cargo):
             unit['length'], unit['width'] = unit['width'], unit['length']
 
         if unit['height'] > height:
-            raise Exception  # TODO sane exception
+            raise rest_framework_exceptions.ValidationError({'message': f'Improper cargo in vehicle; height - {unit}'})
         elif unit['length'] <= euro_6_pallet['length'] and \
                 unit['width'] <= euro_6_pallet['width'] and \
                 unit['weight'] <= euro_6_pallet['maximum_payload']:
@@ -69,7 +68,7 @@ def calculate_truck_load(length, width, height, maximum_payload, *cargo):
                 unit['weight'] <= euro_1_pallet['maximum_payload']:
             euro_1_cargo.append(unit['weight'] + euro_1_pallet['weight'])
         else:
-            raise Exception  # TODO sane exception
+            raise rest_framework_exceptions.ValidationError({'message': f'Improper cargo in vehicle; volume - {unit}'})
 
     leftover_payload = maximum_payload - (sum(euro_1_cargo) + sum(euro_6_cargo))
     euro_1_pallet_space = length // euro_1_pallet['length']
@@ -77,15 +76,23 @@ def calculate_truck_load(length, width, height, maximum_payload, *cargo):
     if width > euro_1_pallet['width'] * 2:
         euro_1_pallet_space *= 2
         euro_6_pallet_space *= 2
+    if len(euro_1_cargo) > euro_1_pallet_space:
+        raise rest_framework_exceptions.ValidationError({'message': 'improper cargo in vehicle; overload'})
+    if len(euro_1_cargo) == euro_1_pallet_space:
+        free_euro_1_space = False
+    else:
+        free_euro_1_space = True
     used_space = len(euro_1_cargo) * 2 + len(euro_6_cargo)
     vehicle_capacity = euro_1_pallet_space * 2 + euro_6_pallet_space
     leftover_space = vehicle_capacity - used_space
-    if leftover_space > 1:
+    if leftover_space > 1 and free_euro_1_space:
         return euro_1_pallet['length'], euro_1_pallet['width'], leftover_payload
     elif leftover_space > 0:
         return euro_6_pallet['length'], euro_6_pallet['width'], leftover_payload
-    else:
+    elif leftover_space == 0:
         return 0, 0, 0
+    else:
+        raise rest_framework_exceptions.ValidationError({'message': 'improper cargo in vehicle; overload'})
 
 
 def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_width, order_weight):
@@ -281,11 +288,13 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
 
         if self.context.get('serializer') == views.VehicleLocationSet.view_name and self.context.get(
                 'action') == 'list':
+            vehicle_model = instance.vehicle_model
+            pending_order = self.context.get('pending_order')
+            if vehicle_model.height < pending_order.height:
+                return None
             if representation['route']:
-                pending_order = self.context.get('pending_order')
                 if pending_order.length < pending_order.width:
                     pending_order.length, pending_order.width = pending_order.width, pending_order.length
-                vehicle_model = instance.vehicle_model
                 ordered_route = order_route(representation.pop('route'))
                 representation['route'] = check_if_route_is_full(ordered_route, vehicle_model, pending_order.length,
                                                                  pending_order.width, pending_order.weight)
@@ -310,9 +319,12 @@ class OrderSerializer(DynamicFieldsModelSerializer):
                 departure = models.Route.objects.get(pk=attrs['route'][0].id)
             except django_exceptions.ObjectDoesNotExist:
                 raise rest_framework_exceptions.ValidationError(detail={'departure': 'Object not found'})
+            if departure.vehicle.vehicle_model.height < attrs['height']:
+                raise rest_framework_exceptions.ValidationError({'message': 'order height is higher then vehicle'})
             route = models.Route.objects.filter(vehicle_id=departure.vehicle)
             ordered_route = order_route(
-                [{'location': {'id': point['location_id']}, **{key: point[key] for key in point if key != 'location_id'}} for
+                [{'location': {'id': point['location_id']},
+                  **{key: point[key] for key in point if key != 'location_id'}} for
                  point in route.values()])
             departure_index, destination_index, departure_id, destination_id = 0, 0, None, None
             for point in ordered_route:
@@ -340,12 +352,12 @@ class OrderSerializer(DynamicFieldsModelSerializer):
             if route_validation:
                 raise serializers.ValidationError(route_validation)
             else:
-                data['route'] = [route_data for route_data in [data['route']['departure'], data['route']['destination']]]
+                data['route'] = [route_data for route_data in
+                                 [data['route']['departure'], data['route']['destination']]]
         return super().to_internal_value(data)
 
 
 class RouteSerializer(DynamicFieldsModelSerializer):
-
     class Meta:
         model = models.Route
         fields = '__all__'
@@ -359,7 +371,8 @@ class RouteSerializer(DynamicFieldsModelSerializer):
             if route_to_order:
                 last_route = order_route(list(route_to_order))[-1]
                 if last_route['location'] == validated_data['location'].id:
-                    raise rest_framework_exceptions.ValidationError({'location': 'location is identical to previous one'})
+                    raise rest_framework_exceptions.ValidationError(
+                        {'location': 'location is identical to previous one'})
             new_route_point = models.Route.objects.create(**validated_data)
             if route_to_order:
                 for point in route:
