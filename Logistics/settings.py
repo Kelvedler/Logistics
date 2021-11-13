@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'users.apps.UsersConfig',
-    'freight_shipping.apps.FreightShippingConfig'
+    'freight_shipping.apps.FreightShippingConfig',
+    'paypal.apps.PaypalConfig'
 ]
 
 MIDDLEWARE = [

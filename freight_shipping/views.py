@@ -1,7 +1,5 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets, exceptions as rest_framework_exceptions
 from . import models, permissions, fields, serializers
-from users import models as user_models
-from rest_framework import viewsets, exceptions as rest_framework_exceptions
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from users.views import CsrfExemptSessionAuthentication
