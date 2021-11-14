@@ -2,6 +2,7 @@ import json
 import os
 import base64
 import ast
+import re
 from rest_framework import viewsets, status
 from urllib import error, request as urllib_request
 from rest_framework.response import Response
@@ -42,16 +43,15 @@ class Payment(viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     def create(self, request):
-        body = request.data.get('amount')
-        amount_structure = {
-            "currency_code": "str",
-            "value": "str"
+        structure = {
+            'amount': {
+                "currency_code": "str",
+                "value": "str"
+            }
         }
-        if not body:
-            return Response({'amount': 'not found'})
-        not_validated = validate_structure('amount', amount_structure, body)
-        if not_validated:
-            return Response(not_validated, status=status.HTTP_400_BAD_REQUEST)
+        validated = validate_structure(structure, request.data)
+        if validated is not True:
+            return Response(validated, status=status.HTTP_400_BAD_REQUEST)
         access_token, rest_status = get_access_token()
         access_token = ast.literal_eval(access_token['access_token'].decode('utf-8'))['access_token']
         if 'message' in access_token:
@@ -66,5 +66,8 @@ class Payment(viewsets.ViewSet):
             }]
         }
         order_url, rest_status = create_order(access_token, order_request_body)
+        order_repr = order_url['order'].decode('utf-8')
+        order_repr = re.search(r'(http[^"]+token=)([^"]+)', order_repr)
+        print(order_repr.group(1) + order_repr.group(2))
         return Response(order_url, status=rest_status)
 

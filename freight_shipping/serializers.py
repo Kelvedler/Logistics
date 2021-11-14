@@ -7,45 +7,36 @@ from django.db import transaction
 from django.core import exceptions as django_exceptions
 
 
-def validate_structure(element, structure, data):
-    def get_type_error(element, expected, got):
+def validate_structure(structure: dict, data: dict):
 
-        def cut_out_type(route_type) -> str:
-            return re.search(r"'([^']+)", route_type).group(1)
+    def get_type(route_type):
+        return re.search(r"'([^']+)", str(type(route_type))).group(1)
 
-        return {element: ['Expected a {} but got a {}'.format(cut_out_type(str(type(expected))),
-                                                              cut_out_type(str(type(got))))]}
+    errors_dict = {}
 
-    def try_nested_validation(nested_element, structure_element, data_element):
-        if isinstance(data_element, list) or isinstance(data_element, dict):
-            return validate_structure(nested_element, structure_element, data_element)
+    for item in structure:
+        if not data.get(item):
+            errors_dict[item] = 'This field is required.'
+        elif not isinstance(data[item], type(structure[item])):
+            errors_dict[item] = 'Expected a {}, but got {}.'.format(get_type(structure[item]), get_type(data[item]))
+        elif isinstance(structure[item], list):
+            for list_element in data[item]:
+                if not isinstance(list_element, structure[item][0]):
+                    errors_dict[item] = 'Expected {} inside list, but got {}.'.format(get_type(structure[item][0]),
+                                                                                      get_type(list_element))
+                elif isinstance(structure[item][0], dict):
+                    nested_validation = validate_structure(structure[item][0], list_element)
+                    if nested_validation is not True:
+                        errors_dict[item] = nested_validation
+        elif isinstance(structure[item], dict):
+            nested_validation = validate_structure(structure[item], data[item])
+            if nested_validation is not True:
+                errors_dict[item] = nested_validation
 
-    if isinstance(structure, list):
-        if not isinstance(data, list):
-            return get_type_error(element, structure, data)
-        for item in data:
-            if not isinstance(item, type(structure[0])):
-                return get_type_error(element, structure[0], item)
-            message = try_nested_validation(element, structure[0], item)
-            if message:
-                return message
-
-    elif isinstance(structure, dict):
-        if not isinstance(data, dict):
-            return get_type_error(element, structure, data)
-        for item in structure:
-            if not data.get(item):
-                return {'message': ['{} required'.format(item)]}
-            if not isinstance(data[item], type(structure[item])):
-                return get_type_error(item, structure[item], data[item])
-            message = try_nested_validation(item, structure[item], data[item])
-            if message:
-                return message
-
+    if errors_dict:
+        return errors_dict
     else:
-        if not isinstance(data, type(structure)):
-            return get_type_error(element, structure, data)
-    return None
+        return True
 
 
 def calculate_truck_load(length, width, height, maximum_payload, *cargo):
@@ -347,9 +338,9 @@ class OrderSerializer(DynamicFieldsModelSerializer):
 
     def to_internal_value(self, data):
         if data.get('route'):
-            route_structure = {'departure': 1, 'destination': 1}
-            route_validation = validate_structure('route', route_structure, data['route'])
-            if route_validation:
+            route_structure = {'route': {'departure': 1, 'destination': 1}}
+            route_validation = validate_structure(route_structure, {'route': data['route']})
+            if route_validation is not True:
                 raise serializers.ValidationError(route_validation)
             else:
                 data['route'] = [route_data for route_data in
