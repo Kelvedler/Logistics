@@ -7,7 +7,8 @@ from rest_framework import viewsets, status
 from urllib import error, request as urllib_request
 from rest_framework.response import Response
 from users.views import CsrfExemptSessionAuthentication
-from . import statuses
+from . import statuses, serializers
+from freight_shipping import models as freight_shipping_models
 from freight_shipping.serializers import validate_structure
 
 
@@ -39,8 +40,10 @@ def create_order(access_token, request_body: dict):
     return {'order': order.read()}, status.HTTP_200_OK
 
 
-class Payment(viewsets.ViewSet):
+class PaymentSet(viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    queryset = freight_shipping_models.Payment.objects
+    serializer_class = serializers.PaymentSerializer
 
     def create(self, request):
         structure = {
@@ -65,9 +68,15 @@ class Payment(viewsets.ViewSet):
                 }
             }]
         }
-        order_url, rest_status = create_order(access_token, order_request_body)
-        order_repr = order_url['order'].decode('utf-8')
-        order_repr = re.search(r'(http[^"]+token=)([^"]+)', order_repr)
-        print(order_repr.group(1) + order_repr.group(2))
-        return Response(order_url, status=rest_status)
-
+        order_repr, rest_status = create_order(access_token, order_request_body)
+        if 'message' in order_repr:
+            return Response(order_repr, status=rest_status)
+        filtered_order = re.search(r'(http[^"]+token=)([^"]+)', order_repr['order'].decode('utf-8'))
+        payment_url = filtered_order.group(1) + filtered_order.group(2)
+        request.data['payment_method'] = 'paypal'
+        request.data['payment_id'] = filtered_order.group(2)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'payment_url': payment_url, **serializer.data}, status=rest_status)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

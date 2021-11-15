@@ -92,3 +92,17 @@ class Order(models.Model):
 
     def __str__(self):
         return f'# {self.id}'
+
+
+class Payment(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
+    payment_method = models.CharField(max_length=20)
+    payment_id = models.CharField(max_length=19)
+    completed = models.BooleanField(default=False)
+
+    class Meta:
+        default_permissions = ()
+        unique_together = ['payment_method', 'payment_id']
+
+    def __str__(self):
+        return f'{self.payment_method}; payment_id={self.payment_id}, completed={self.completed}'
