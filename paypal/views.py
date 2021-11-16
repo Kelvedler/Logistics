@@ -3,6 +3,7 @@ import os
 import base64
 import ast
 import re
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from urllib import error, request as urllib_request
 from rest_framework.response import Response
@@ -28,24 +29,29 @@ def get_access_token():
     return {'access_token': access_token.read()}, status.HTTP_200_OK
 
 
-def create_order(access_token, request_body: dict):
-    request_order = urllib_request.Request('https://api-m.sandbox.paypal.com/v2/checkout/orders')
+def make_request(access_token, request_url: str, request_body: dict = None):
+    request_order = urllib_request.Request(request_url, method='POST')
     request_order.add_header('Content-Type', 'application/json')
     request_order.add_header('Authorization', f'Bearer {access_token}')
+    if request_body:
+        json_data = {'data': json.dumps(request_body).encode('utf-8')}
+    else:
+        json_data = {}
     try:
-        order = urllib_request.urlopen(request_order, data=json.dumps(request_body).encode('utf-8'))
+        order = urllib_request.urlopen(request_order, **json_data)
     except error.HTTPError as http_error:
         rest_status = statuses.get_rest_framework_status(http_error.code)
         return {'message': http_error}, rest_status
     return {'order': order.read()}, status.HTTP_200_OK
 
 
-class PaymentSet(viewsets.ViewSet):
+class OrderSet(viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = freight_shipping_models.Payment.objects
     serializer_class = serializers.PaymentSerializer
 
     def create(self, request):
+        create_order_url = 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
         structure = {
             'amount': {
                 "currency_code": "str",
@@ -68,7 +74,7 @@ class PaymentSet(viewsets.ViewSet):
                 }
             }]
         }
-        order_repr, rest_status = create_order(access_token, order_request_body)
+        order_repr, rest_status = make_request(access_token, create_order_url, order_request_body)
         if 'message' in order_repr:
             return Response(order_repr, status=rest_status)
         filtered_order = re.search(r'(http[^"]+token=)([^"]+)', order_repr['order'].decode('utf-8'))
@@ -80,3 +86,25 @@ class PaymentSet(viewsets.ViewSet):
             serializer.save()
             return Response({'payment_url': payment_url, **serializer.data}, status=rest_status)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CaptureOrderSet(viewsets.ViewSet):
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    queryset = freight_shipping_models.Payment.objects
+
+    def create(self, request):
+        payment_order = get_object_or_404(self.queryset.all(), pk=request.data['order_id'])
+        access_token, rest_status = get_access_token()
+        access_token = ast.literal_eval(access_token['access_token'].decode('utf-8'))['access_token']
+        if 'message' in access_token:
+            return Response(access_token, status=rest_status)
+        capture_payment_url = f'https://api-m.sandbox.paypal.com/v2/checkout/orders/{payment_order.payment_id}/capture'
+        capture_payment, rest_status = make_request(access_token, capture_payment_url)
+        if 'message' in capture_payment:
+            return Response(capture_payment, status=rest_status)
+        capture_status = re.search(r'{}","status":"([^"]+)"'.format(payment_order.payment_id),
+                                   capture_payment['order'].decode('utf-8')).group(1)
+        payment_order.completed = True
+        payment_order.save()
+        return Response({'paypal_status': capture_status, 'completed': payment_order.completed},
+                        status=status.HTTP_200_OK)
