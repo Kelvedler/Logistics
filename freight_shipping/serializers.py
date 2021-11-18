@@ -5,10 +5,10 @@ from users import models as user_models
 from rest_framework import serializers, exceptions as rest_framework_exceptions
 from django.db import transaction
 from django.core import exceptions as django_exceptions
+from django.core.cache import cache
 
 
 def validate_structure(structure: dict, data: dict):
-
     def get_type(route_type):
         return re.search(r"'([^']+)", str(type(route_type))).group(1)
 
@@ -86,15 +86,48 @@ def calculate_truck_load(length, width, height, maximum_payload, *cargo):
         raise rest_framework_exceptions.ValidationError({'message': 'improper cargo in vehicle; overload'})
 
 
+def delete_unpaid_route(ordered_route, orders_in_route):
+    instances_to_delete = []
+    for route_instance in ordered_route:
+        delete_route_instance = True
+        if cache.get(f'route_{route_instance["id"]}'):
+            delete_route_instance = False
+        else:
+            for order in orders_in_route:
+                for route_in_order in order.route.all():
+                    if route_in_order.id == route_instance['id']:
+                        payment = getattr(order, 'payment', None)
+                        if payment and payment.completed:
+                            delete_route_instance = False
+                            break
+        if delete_route_instance:
+            instances_to_delete.insert(0, route_instance)
+    for instance in instances_to_delete:
+        instance_index = ordered_route.index(instance)
+        if instance_index > 0:
+            previous_route_instance = models.Route.objects.get(pk=ordered_route[instance_index - 1]['id'])
+            if instance_index < len(ordered_route) - 1:
+                previous_route_instance.next_route_id = int(ordered_route[instance_index + 1]['id'])
+            else:
+                previous_route_instance.next_route_id = None
+            previous_route_instance.save()
+        for index in range(instance_index + 1, len(ordered_route)):
+            ordered_route[index]['index'] = index - 1
+        instance_to_delete = models.Route.objects.get(pk=ordered_route[instance_index]['id'])
+        instance_to_delete.delete()
+        ordered_route.pop(instance_index)
+
+
 def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_width, order_weight):
     route = []
     orders_in_route = models.Order.objects.filter(
         route__in=[route['id'] for route in ordered_route]).distinct()
-    for order_instance in ordered_route:
+    delete_unpaid_route(ordered_route, orders_in_route)
+    for route_instance in ordered_route:
         order_measurements = []
         for order in orders_in_route:
             for route_in_order in order.route.all():
-                if route_in_order.id == order_instance['id']:
+                if route_in_order.id == route_instance['id']:
                     order_measurements.append(
                         {'length': order.length, 'width': order.width, 'height': order.height,
                          'weight': order.weight})
@@ -107,12 +140,12 @@ def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_wid
             if leftover_length >= order_length and \
                     leftover_width >= order_width and \
                     leftover_payload >= order_weight:
-                order_instance['full'] = False
+                route_instance['full'] = False
             else:
-                order_instance['full'] = True
+                route_instance['full'] = True
         else:
-            order_instance['full'] = False
-        route.append(order_instance)
+            route_instance['full'] = False
+        route.append(route_instance)
     return route
 
 
@@ -365,6 +398,7 @@ class RouteSerializer(DynamicFieldsModelSerializer):
                     raise rest_framework_exceptions.ValidationError(
                         {'location': 'location is identical to previous one'})
             new_route_point = models.Route.objects.create(**validated_data)
+            cache.set(f'route_{new_route_point.id}', 'unpaid_route', timeout=1800)
             if route_to_order:
                 for point in route:
                     if point.id == last_route['id']:

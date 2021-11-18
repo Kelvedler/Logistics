@@ -6,6 +6,7 @@ from users.views import CsrfExemptSessionAuthentication
 from users.models import USER_GROUPS
 from django.db.models import Q
 from django.core import exceptions as django_exceptions
+from django.core.cache import cache
 
 
 class CountryList(generics.ListCreateAPIView):
@@ -206,8 +207,8 @@ class OrderSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, pk=None):
-        self.check_object_permissions(request=request, obj=None)
         order = get_object_or_404(self.queryset, pk=pk)
+        self.check_object_permissions(request=request, obj=order)
         order.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

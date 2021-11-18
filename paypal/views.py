@@ -26,7 +26,7 @@ def get_access_token():
     except error.HTTPError as http_error:
         rest_status = statuses.get_rest_framework_status(http_error.code)
         return {'message': http_error}, rest_status
-    return {'access_token': access_token.read()}, status.HTTP_200_OK
+    return {'access_token': access_token.read().decode('utf-8')}, status.HTTP_200_OK
 
 
 def make_request(access_token, request_url: str, request_body: dict = None):
@@ -42,7 +42,7 @@ def make_request(access_token, request_url: str, request_body: dict = None):
     except error.HTTPError as http_error:
         rest_status = statuses.get_rest_framework_status(http_error.code)
         return {'message': http_error}, rest_status
-    return {'order': order.read()}, status.HTTP_200_OK
+    return {'order': order.read().decode('utf-8')}, status.HTTP_200_OK
 
 
 class OrderSet(viewsets.ViewSet):
@@ -62,7 +62,7 @@ class OrderSet(viewsets.ViewSet):
         if validated is not True:
             return Response(validated, status=status.HTTP_400_BAD_REQUEST)
         access_token, rest_status = get_access_token()
-        access_token = ast.literal_eval(access_token['access_token'].decode('utf-8'))['access_token']
+        access_token = ast.literal_eval(access_token['access_token'])['access_token']
         if 'message' in access_token:
             return Response(access_token, status=rest_status)
         order_request_body = {
@@ -77,7 +77,7 @@ class OrderSet(viewsets.ViewSet):
         order_repr, rest_status = make_request(access_token, create_order_url, order_request_body)
         if 'message' in order_repr:
             return Response(order_repr, status=rest_status)
-        filtered_order = re.search(r'(http[^"]+token=)([^"]+)', order_repr['order'].decode('utf-8'))
+        filtered_order = re.search(r'(http[^"]+token=)([^"]+)', order_repr['order'])
         payment_url = filtered_order.group(1) + filtered_order.group(2)
         request.data['payment_method'] = 'paypal'
         request.data['payment_id'] = filtered_order.group(2)
@@ -95,7 +95,7 @@ class CaptureOrderSet(viewsets.ViewSet):
     def create(self, request):
         payment_order = get_object_or_404(self.queryset.all(), pk=request.data['order_id'])
         access_token, rest_status = get_access_token()
-        access_token = ast.literal_eval(access_token['access_token'].decode('utf-8'))['access_token']
+        access_token = ast.literal_eval(access_token['access_token'])['access_token']
         if 'message' in access_token:
             return Response(access_token, status=rest_status)
         capture_payment_url = f'https://api-m.sandbox.paypal.com/v2/checkout/orders/{payment_order.payment_id}/capture'
@@ -103,7 +103,7 @@ class CaptureOrderSet(viewsets.ViewSet):
         if 'message' in capture_payment:
             return Response(capture_payment, status=rest_status)
         capture_status = re.search(r'{}","status":"([^"]+)"'.format(payment_order.payment_id),
-                                   capture_payment['order'].decode('utf-8')).group(1)
+                                   capture_payment['order']).group(1)
         payment_order.completed = True
         payment_order.save()
         return Response({'paypal_status': capture_status, 'completed': payment_order.completed},
