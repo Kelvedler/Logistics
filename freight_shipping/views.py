@@ -1,4 +1,4 @@
-from rest_framework import generics, status, viewsets, exceptions as rest_framework_exceptions
+from rest_framework import status, viewsets, exceptions as rest_framework_exceptions
 from . import models, permissions, fields, serializers
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -6,73 +6,22 @@ from users.views import CsrfExemptSessionAuthentication
 from users.models import USER_GROUPS
 from django.db.models import Q
 from django.core import exceptions as django_exceptions
-from django.core.cache import cache
 
 
-class CountryList(generics.ListCreateAPIView):
+class CountrySet(viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.Country.objects.all()
     serializer_class = serializers.CountrySerializer
 
 
-class CountryDetail(generics.RetrieveUpdateDestroyAPIView):
+class CitySet(viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
-    queryset = models.Country.objects.all()
-    serializer_class = serializers.CountrySerializer
-
-
-class CityList(generics.ListCreateAPIView):
-    authentication_classes = [CsrfExemptSessionAuthentication]
-
-    def get_queryset(self):
-        return super().get_queryset().filter(country=self.kwargs['country_id'])
-
-    def get_serializer(self, *args, **kwargs):
-        self.request.data['country'] = self.kwargs.pop('country_id')
-        return super().get_serializer(*args, **kwargs)
-
     queryset = models.City.objects.all()
     serializer_class = serializers.CitySerializer
 
 
-class CityDetail(generics.RetrieveUpdateDestroyAPIView):
+class DistrictSet(viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
-
-    def get_queryset(self):
-        return super().get_queryset().filter(country=self.kwargs['country_id'])
-
-    def get_serializer(self, *args, **kwargs):
-        self.request.data['country'] = self.kwargs.pop('country_id')
-        return super().get_serializer(*args, **kwargs)
-
-    queryset = models.City.objects.all()
-    serializer_class = serializers.CitySerializer
-
-
-class DistrictList(generics.ListCreateAPIView):
-    authentication_classes = [CsrfExemptSessionAuthentication]
-
-    def get_queryset(self):
-        return super().get_queryset().filter(city=self.kwargs['city_id'])
-
-    def get_serializer(self, *args, **kwargs):
-        self.request.data['city'] = self.kwargs.pop('city_id')
-        return super().get_serializer(*args, **kwargs)
-
-    queryset = models.District.objects.all()
-    serializer_class = serializers.DistrictSerializer
-
-
-class DistrictDetail(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = [CsrfExemptSessionAuthentication]
-
-    def get_queryset(self):
-        return super().get_queryset().filter(city=self.kwargs['city_id'])
-
-    def get_serializer(self, *args, **kwargs):
-        self.request.data['city'] = self.kwargs.pop('city_id')
-        return super().get_serializer(*args, **kwargs)
-
     queryset = models.District.objects.all()
     serializer_class = serializers.DistrictSerializer
 
