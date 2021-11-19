@@ -6,27 +6,40 @@ from users.views import CsrfExemptSessionAuthentication
 from users.models import USER_GROUPS
 from django.db.models import Q
 from django.core import exceptions as django_exceptions
+from mixins import SessionExpiryResetViewSetMixin
 
 
-class CountrySet(viewsets.ModelViewSet):
+class CountrySet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.Country.objects.all()
     serializer_class = serializers.CountrySerializer
 
 
-class CitySet(viewsets.ModelViewSet):
+class CitySet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.City.objects.all()
     serializer_class = serializers.CitySerializer
 
+    def get_queryset(self):
+        country_filter = self.request.query_params.get('country')
+        if country_filter:
+            return models.City.objects.filter(country=country_filter)
+        return super().get_queryset()
 
-class DistrictSet(viewsets.ModelViewSet):
+
+class DistrictSet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.District.objects.all()
     serializer_class = serializers.DistrictSerializer
 
+    def get_queryset(self):
+        city_filter = self.request.query_params.get('city')
+        if city_filter:
+            return models.District.objects.filter(city=city_filter)
+        return super().get_queryset()
 
-class VehicleSet(viewsets.ViewSet):
+
+class VehicleSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     queryset = models.Vehicle.objects.prefetch_related('route')
     serializer_class = serializers.VehicleSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]
@@ -89,7 +102,7 @@ class VehicleSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class VehicleLocationSet(viewsets.ViewSet):
+class VehicleLocationSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     view_name = 'VehicleLocationSet'
     queryset = models.Vehicle.objects
     serializer_class = serializers.VehicleSerializer
@@ -118,7 +131,7 @@ class VehicleLocationSet(viewsets.ViewSet):
         return Response([obj for obj in serializer.data if obj], status=status.HTTP_204_NO_CONTENT)
 
 
-class OrderSet(viewsets.ViewSet):
+class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     queryset = models.Order.objects
     serializer_class = serializers.OrderSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]
@@ -162,7 +175,7 @@ class OrderSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class RouteSet(viewsets.ViewSet):
+class RouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     queryset = models.Route.objects
     serializer_class = serializers.RouteSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]

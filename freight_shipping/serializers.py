@@ -398,7 +398,7 @@ class RouteSerializer(DynamicFieldsModelSerializer):
                     raise rest_framework_exceptions.ValidationError(
                         {'location': 'location is identical to previous one'})
             new_route_point = models.Route.objects.create(**validated_data)
-            cache.set(f'route_{new_route_point.id}', 'unpaid_route', timeout=1800)
+            cache.set(f'route_{new_route_point.id}', 'unpaid_route', timeout=30 * 60)
             if route_to_order:
                 for point in route:
                     if point.id == last_route['id']:

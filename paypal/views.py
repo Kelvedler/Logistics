@@ -11,6 +11,7 @@ from users.views import CsrfExemptSessionAuthentication
 from . import statuses, serializers
 from freight_shipping import models as freight_shipping_models
 from freight_shipping.serializers import validate_structure
+from mixins import SessionExpiryResetViewSetMixin
 
 
 def get_access_token():
@@ -45,7 +46,7 @@ def make_request(access_token, request_url: str, request_body: dict = None):
     return {'order': order.read().decode('utf-8')}, status.HTTP_200_OK
 
 
-class OrderSet(viewsets.ViewSet):
+class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = freight_shipping_models.Payment.objects
     serializer_class = serializers.PaymentSerializer
@@ -88,7 +89,7 @@ class OrderSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CaptureOrderSet(viewsets.ViewSet):
+class CaptureOrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = freight_shipping_models.Payment.objects
 
