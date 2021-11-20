@@ -148,16 +148,23 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     serializer_class = serializers.OrderSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [permissions.OrderPermission]
+    fields = fields.order_fields
 
     def list(self, request):
-        serializer = self.serializer_class(self.queryset.all(), many=True)
+        excluded_fields = request.query_params.getlist('exclude')
+        display_fields = [field for key, field in self.fields.items() if
+                          key not in excluded_fields]
+        serializer = self.serializer_class(self.queryset.all(), many=True, fields=display_fields)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
         if not request.data.get('customer'):
             request.data['customer'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
-        serializer = self.serializer_class(data=request.data)
+        excluded_fields = request.query_params.getlist('exclude')
+        display_fields = [field for key, field in self.fields.items() if
+                          key not in excluded_fields]
+        serializer = self.serializer_class(data=request.data, fields=display_fields)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -166,7 +173,10 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=order)
-        serializer = self.serializer_class(order)
+        excluded_fields = request.query_params.getlist('exclude')
+        display_fields = [field for key, field in self.fields.items() if
+                          key not in excluded_fields]
+        serializer = self.serializer_class(order, fields=display_fields)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, pk=None):
@@ -174,7 +184,10 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             request.data['customer'] = request.user.id
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=None)
-        serializer = self.serializer_class(order, data=request.data)
+        excluded_fields = request.query_params.getlist('exclude')
+        display_fields = [field for key, field in self.fields.items() if
+                          key not in excluded_fields]
+        serializer = self.serializer_class(order, data=request.data, fields=display_fields)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)

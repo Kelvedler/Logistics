@@ -1,3 +1,20 @@
+country_fields = {
+    'id': 'id',
+    'name': 'name'
+}
+
+city_fields = {
+    'id': 'id',
+    'name': 'name',
+    'country': 'country'
+}
+
+district_fields = {
+    'id': 'id',
+    'name': 'name',
+    'city': 'city'
+}
+
 vehicle_fields = {
     'basic': {
         'id': 'id',
@@ -21,19 +38,15 @@ vehicle_fields = {
     }
 }
 
-country_fields = {
+order_fields = {
     'id': 'id',
-    'name': 'name'
-}
-
-city_fields = {
-    'id': 'id',
-    'name': 'name',
-    'country': 'country'
-}
-
-district_fields = {
-    'id': 'id',
-    'name': 'name',
-    'city': 'city'
+    'customer': 'customer',
+    'departure': 'departure',
+    'destination': 'destination',
+    'length': 'length',
+    'width': 'width',
+    'height': 'height',
+    'weight': 'weight',
+    'temperature_control': 'temperature_control',
+    'dangerous_goods': 'dangerous_goods'
 }

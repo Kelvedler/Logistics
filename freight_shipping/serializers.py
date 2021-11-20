@@ -340,7 +340,10 @@ class OrderSerializer(DynamicFieldsModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        if attrs.get('departure') and attrs.get('destination'):
+        if bool(attrs.get('departure')) != bool(attrs.get('destination')):
+            raise rest_framework_exceptions.ValidationError(
+                detail={'message': 'not allowed to provide destination without departure or vice versa'})
+        elif attrs.get('departure') and attrs.get('destination'):
             try:
                 departure = models.Route.objects.get(pk=attrs['departure'].id)
             except django_exceptions.ObjectDoesNotExist:
@@ -370,17 +373,6 @@ class OrderSerializer(DynamicFieldsModelSerializer):
             if not valid_departure or not valid_destination:
                 raise rest_framework_exceptions.ValidationError(detail='Could not place the order, vehicle is full')
         return attrs
-
-    # def to_internal_value(self, data):
-    #     if data.get('route'):
-    #         route_structure = {'route': {'departure': 1, 'destination': 1}}
-    #         route_validation = validate_structure(route_structure, {'route': data['route']})
-    #         if route_validation is not True:
-    #             raise serializers.ValidationError(route_validation)
-    #         else:
-    #             data['route'] = [route_data for route_data in
-    #                              [data['route']['departure'], data['route']['destination']]]
-    #     return super().to_internal_value(data)
 
 
 class RouteSerializer(DynamicFieldsModelSerializer):
