@@ -4,6 +4,7 @@ from . import models, views
 from users import models as user_models
 from rest_framework import serializers, exceptions as rest_framework_exceptions
 from django.db import transaction
+from django.db.models import Q
 from django.core import exceptions as django_exceptions
 from django.core.cache import cache
 
@@ -94,7 +95,7 @@ def delete_unpaid_route(ordered_route, orders_in_route):
             delete_route_instance = False
         else:
             for order in orders_in_route:
-                for route_in_order in order.route.all():
+                for route_in_order in [order.departure, order.destination]:
                     if route_in_order.id == route_instance['id']:
                         payment = getattr(order, 'payment', None)
                         if payment and payment.completed:
@@ -121,12 +122,13 @@ def delete_unpaid_route(ordered_route, orders_in_route):
 def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_width, order_weight):
     route = []
     orders_in_route = models.Order.objects.filter(
-        route__in=[route['id'] for route in ordered_route]).distinct()
+        Q(departure__in=[route['id'] for route in ordered_route]) | Q(
+            destination__in=[route['id'] for route in ordered_route])).distinct()
     delete_unpaid_route(ordered_route, orders_in_route)
     for route_instance in ordered_route:
         order_measurements = []
         for order in orders_in_route:
-            for route_in_order in order.route.all():
+            for route_in_order in [order.departure, order.destination]:
                 if route_in_order.id == route_instance['id']:
                     order_measurements.append(
                         {'length': order.length, 'width': order.width, 'height': order.height,
@@ -338,9 +340,9 @@ class OrderSerializer(DynamicFieldsModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        if attrs.get('route'):
+        if attrs.get('departure') and attrs.get('destination'):
             try:
-                departure = models.Route.objects.get(pk=attrs['route'][0].id)
+                departure = models.Route.objects.get(pk=attrs['departure'].id)
             except django_exceptions.ObjectDoesNotExist:
                 raise rest_framework_exceptions.ValidationError(detail={'departure': 'Object not found'})
             if departure.vehicle.vehicle_model.height < attrs['height']:
@@ -350,13 +352,13 @@ class OrderSerializer(DynamicFieldsModelSerializer):
                 [{'location': {'id': point['location_id']},
                   **{key: point[key] for key in point if key != 'location_id'}} for
                  point in route.values()])
-            departure_index, destination_index, departure_id, destination_id = 0, 0, None, None
+            departure_index, destination_index, departure_id, destination_id = -1, -1, None, None
             for point in ordered_route:
-                if point['id'] == attrs['route'][0].id:
+                if point['id'] == attrs['departure'].id:
                     departure_index, departure_id = point['index'], point['location']['id']
-                elif point['id'] == attrs['route'][1].id:
+                elif point['id'] == attrs['destination'].id:
                     destination_index, destination_id = point['index'], point['location']['id']
-            if destination_index == 0:
+            if destination_index == -1:
                 raise rest_framework_exceptions.ValidationError(detail={'destination': 'Object not found'})
             if departure_index > destination_index:
                 raise rest_framework_exceptions.ValidationError(
@@ -369,16 +371,16 @@ class OrderSerializer(DynamicFieldsModelSerializer):
                 raise rest_framework_exceptions.ValidationError(detail='Could not place the order, vehicle is full')
         return attrs
 
-    def to_internal_value(self, data):
-        if data.get('route'):
-            route_structure = {'route': {'departure': 1, 'destination': 1}}
-            route_validation = validate_structure(route_structure, {'route': data['route']})
-            if route_validation is not True:
-                raise serializers.ValidationError(route_validation)
-            else:
-                data['route'] = [route_data for route_data in
-                                 [data['route']['departure'], data['route']['destination']]]
-        return super().to_internal_value(data)
+    # def to_internal_value(self, data):
+    #     if data.get('route'):
+    #         route_structure = {'route': {'departure': 1, 'destination': 1}}
+    #         route_validation = validate_structure(route_structure, {'route': data['route']})
+    #         if route_validation is not True:
+    #             raise serializers.ValidationError(route_validation)
+    #         else:
+    #             data['route'] = [route_data for route_data in
+    #                              [data['route']['departure'], data['route']['destination']]]
+    #     return super().to_internal_value(data)
 
 
 class RouteSerializer(DynamicFieldsModelSerializer):

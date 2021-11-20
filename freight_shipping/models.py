@@ -79,7 +79,8 @@ class Route(models.Model):
 
 class Order(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
-    route = models.ManyToManyField(Route, default=None)
+    departure = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL, related_name='departure')
+    destination = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL, related_name='destination')
     length = models.PositiveSmallIntegerField()
     width = models.PositiveSmallIntegerField()
     height = models.PositiveSmallIntegerField()
