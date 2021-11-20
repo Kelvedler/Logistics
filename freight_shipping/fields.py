@@ -20,3 +20,20 @@ vehicle_fields = {
         'route': {'route': ['id', {'location': ['id', 'name']}, 'next_route_id']},
     }
 }
+
+country_fields = {
+    'id': 'id',
+    'name': 'name'
+}
+
+city_fields = {
+    'id': 'id',
+    'name': 'name',
+    'country': 'country'
+}
+
+district_fields = {
+    'id': 'id',
+    'name': 'name',
+    'city': 'city'
+}

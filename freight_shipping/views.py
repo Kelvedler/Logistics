@@ -9,15 +9,26 @@ from django.core import exceptions as django_exceptions
 from mixins import SessionExpiryResetViewSetMixin
 
 
-class CountrySet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
+class DynamicFieldsModelViewSet(viewsets.ModelViewSet):
+    fields = None
+
+    def get_serializer(self, *args, **kwargs):
+        excluded_fields = self.request.query_params.getlist('exclude')
+        display_fields = [field for key, field in self.fields.items() if key not in excluded_fields]
+        return super().get_serializer(*args, fields=display_fields, **kwargs)
+
+
+class CountrySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.Country.objects.all()
+    fields = fields.country_fields
     serializer_class = serializers.CountrySerializer
 
 
-class CitySet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
+class CitySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.City.objects.all()
+    fields = fields.city_fields
     serializer_class = serializers.CitySerializer
 
     def get_queryset(self):
@@ -27,9 +38,10 @@ class CitySet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
         return super().get_queryset()
 
 
-class DistrictSet(SessionExpiryResetViewSetMixin, viewsets.ModelViewSet):
+class DistrictSet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = models.District.objects.all()
+    fields = fields.district_fields
     serializer_class = serializers.DistrictSerializer
 
     def get_queryset(self):

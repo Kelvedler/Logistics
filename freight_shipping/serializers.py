@@ -246,19 +246,19 @@ class DynamicFieldsModelSerializer(serializers.ModelSerializer):
             select_fields(self, fields)
 
 
-class CountrySerializer(serializers.ModelSerializer):
+class CountrySerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = models.Country
         fields = '__all__'
 
 
-class CitySerializer(serializers.ModelSerializer):
+class CitySerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = models.City
         fields = '__all__'
 
 
-class DistrictSerializer(serializers.ModelSerializer):
+class DistrictSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = models.District
         fields = '__all__'
