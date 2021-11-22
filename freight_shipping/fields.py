@@ -1,52 +1,52 @@
 country_fields = {
-    'id': 'id',
-    'name': 'name'
+    'id': None,
+    'name': None
 }
 
 city_fields = {
-    'id': 'id',
-    'name': 'name',
-    'country': 'country'
+    'id': None,
+    'name': None,
+    'country': None
 }
 
 district_fields = {
-    'id': 'id',
-    'name': 'name',
-    'city': 'city'
+    'id': None,
+    'name': None,
+    'city': None
 }
 
 vehicle_fields = {
     'basic': {
-        'id': 'id',
-        'driver': 'driver',
-        'plate': 'plate',
-        'temperature_control': 'temperature_control',
-        'dangerous_goods': 'dangerous_goods',
-        'vehicle_model': {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        'location': 'location'
+        'id': None,
+        'driver': None,
+        'plate': None,
+        'temperature_control': None,
+        'dangerous_goods': None,
+        'vehicle_model': {'id': None, 'name': None, 'length': None, 'width': None, 'height': None, 'maximum_payload': None},
+        'location': None
 
     },
     'detailed': {
-        'id': 'id',
-        'driver': {'driver': ['id', 'username', 'organization']},
-        'plate': 'plate',
-        'temperature_control': 'temperature_control',
-        'dangerous_goods': 'dangerous_goods',
-        'vehicle_model': {'vehicle_model': ['id', 'name', 'length', 'width', 'height', 'maximum_payload']},
-        'location': 'location',
-        'route': {'route': ['id', {'location': ['id', 'name']}, 'next_route_id']},
+        'id': None,
+        'driver': {'id': None, 'username': None, 'organization': None},
+        'plate': None,
+        'temperature_control': None,
+        'dangerous_goods': None,
+        'vehicle_model': {'id': None, 'name': None, 'length': None, 'width': None, 'height': None, 'maximum_payload': None},
+        'location': None,
+        'route': {'id': None, 'location': {'id': None, 'name': None}, 'next_route_id': None},
     }
 }
 
 order_fields = {
-    'id': 'id',
-    'customer': 'customer',
-    'departure': 'departure',
-    'destination': 'destination',
-    'length': 'length',
-    'width': 'width',
-    'height': 'height',
-    'weight': 'weight',
-    'temperature_control': 'temperature_control',
-    'dangerous_goods': 'dangerous_goods'
+    'id': None,
+    'customer': None,
+    'departure': None,
+    'destination': None,
+    'length': None,
+    'width': None,
+    'height': None,
+    'weight': None,
+    'temperature_control': None,
+    'dangerous_goods': None,
 }

@@ -1,3 +1,4 @@
+import re
 from rest_framework import status, viewsets, exceptions as rest_framework_exceptions
 from . import models, permissions, fields, serializers
 from rest_framework.response import Response
@@ -9,12 +10,25 @@ from django.core import exceptions as django_exceptions
 from mixins import SessionExpiryResetViewSetMixin
 
 
+def exclude_fields(fields, exclude):
+    return_fields = {}
+    for field, nested_field in fields.items():
+        if field not in exclude:
+            if nested_field is not None:
+                nested_exclude = [re.search(r'{}__(.+)'.format(field), exclude_item).group(1) for exclude_item in
+                                  exclude if re.search(r'{}__(.+)'.format(field), exclude_item)]
+                return_fields[field] = exclude_fields(nested_field, nested_exclude)
+            else:
+                return_fields[field] = None
+    return return_fields
+
+
 class DynamicFieldsModelViewSet(viewsets.ModelViewSet):
     fields = None
 
     def get_serializer(self, *args, **kwargs):
         excluded_fields = self.request.query_params.getlist('exclude')
-        display_fields = [field for key, field in self.fields.items() if key not in excluded_fields]
+        display_fields = exclude_fields(self.fields, excluded_fields)
         return super().get_serializer(*args, fields=display_fields, **kwargs)
 
 
@@ -60,8 +74,7 @@ class VehicleSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def list(self, request):
         excluded_fields = request.query_params.getlist('exclude')
-        detailed_fields = [field for key, field in self.fields['detailed'].items() if
-                           key not in excluded_fields]
+        detailed_fields = exclude_fields(self.fields['detailed'], excluded_fields)
         serializer = self.serializer_class(self.queryset,
                                            many=True,
                                            fields=detailed_fields,
@@ -73,8 +86,7 @@ class VehicleSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             request.data['driver'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
         excluded_fields = request.query_params.getlist('exclude')
-        basic_fields = [field for key, field in self.fields['basic'].items() if
-                        key not in excluded_fields]
+        basic_fields = exclude_fields(self.fields['basic'], excluded_fields)
         serializer = self.serializer_class(data=request.data,
                                            fields=basic_fields,
                                            context={'action': self.action})
@@ -86,8 +98,7 @@ class VehicleSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     def retrieve(self, request, pk=None):
         vehicle = get_object_or_404(self.queryset, pk=pk)
         excluded_fields = request.query_params.getlist('exclude')
-        detailed_fields = [field for key, field in self.fields['detailed'].items() if
-                           key not in excluded_fields]
+        detailed_fields = exclude_fields(self.fields['detailed'], excluded_fields)
         serializer = self.serializer_class(vehicle,
                                            fields=detailed_fields,
                                            context={'action': self.action})
@@ -97,8 +108,7 @@ class VehicleSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         vehicle = get_object_or_404(self.queryset, pk=pk)
         self.check_object_permissions(request=request, obj=vehicle)
         excluded_fields = request.query_params.getlist('exclude')
-        basic_fields = [field for key, field in self.fields['basic'].items() if
-                        key not in excluded_fields]
+        basic_fields = exclude_fields(self.fields['basic'], excluded_fields)
         serializer = self.serializer_class(vehicle,
                                            data=request.data,
                                            fields=basic_fields,
@@ -122,8 +132,7 @@ class VehicleLocationSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def list(self, request, departure_id=None, destination_id=None, order_id=None):
         excluded_fields = request.query_params.getlist('exclude')
-        detailed_fields = [field for key, field in self.fields['detailed'].items() if
-                           key not in excluded_fields]
+        detailed_fields = exclude_fields(self.fields['detailed'], excluded_fields)
         try:
             pending_order = models.Order.objects.get(pk=order_id)
         except django_exceptions.ObjectDoesNotExist:
@@ -152,8 +161,7 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def list(self, request):
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = [field for key, field in self.fields.items() if
-                          key not in excluded_fields]
+        display_fields = exclude_fields(self.fields, excluded_fields)
         serializer = self.serializer_class(self.queryset.all(), many=True, fields=display_fields)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -162,8 +170,7 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             request.data['customer'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = [field for key, field in self.fields.items() if
-                          key not in excluded_fields]
+        display_fields = exclude_fields(self.fields, excluded_fields)
         serializer = self.serializer_class(data=request.data, fields=display_fields)
         if serializer.is_valid():
             serializer.save()
@@ -174,8 +181,7 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=order)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = [field for key, field in self.fields.items() if
-                          key not in excluded_fields]
+        display_fields = exclude_fields(self.fields, excluded_fields)
         serializer = self.serializer_class(order, fields=display_fields)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -185,8 +191,7 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=None)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = [field for key, field in self.fields.items() if
-                          key not in excluded_fields]
+        display_fields = exclude_fields(self.fields, excluded_fields)
         serializer = self.serializer_class(order, data=request.data, fields=display_fields)
         if serializer.is_valid():
             serializer.save()

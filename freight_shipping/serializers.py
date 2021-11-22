@@ -221,12 +221,12 @@ class DynamicFieldsModelSerializer(serializers.ModelSerializer):
                 existing = set(serializer.fields.keys())
             allowed = set()
             nested_objects = []
-            for obj in serializer_fields:
-                if type(obj) is dict:
-                    allowed.add(list(obj.keys())[0])
-                    nested_objects.append(obj)
+            for field, nested_field in serializer_fields.items():
+                if nested_field is not None:
+                    allowed.add(field)
+                    nested_objects.append({field: nested_field})
                 else:
-                    allowed.add(obj)
+                    allowed.add(field)
             if isinstance(serializer, serializers.ListSerializer):
                 for field_name in existing - allowed:
                     serializer.child.fields.pop(field_name)
