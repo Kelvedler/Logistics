@@ -6,10 +6,12 @@ from django.contrib.auth import authenticate
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    date_joined = serializers.DateTimeField(read_only=True)
+    last_login = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = models.User
-        fields = ['id', 'username', 'organization', 'email', 'password']
+        fields = '__all__'
 
     def create(self, validated_data):
         with transaction.atomic():

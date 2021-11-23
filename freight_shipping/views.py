@@ -34,6 +34,7 @@ class DynamicFieldsModelViewSet(viewsets.ModelViewSet):
 
 class CountrySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.LocationPermission]
     queryset = models.Country.objects.all()
     fields = fields.country_fields
     serializer_class = serializers.CountrySerializer
@@ -41,6 +42,7 @@ class CountrySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
 
 class CitySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.LocationPermission]
     queryset = models.City.objects.all()
     fields = fields.city_fields
     serializer_class = serializers.CitySerializer
@@ -54,6 +56,7 @@ class CitySet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
 
 class DistrictSet(SessionExpiryResetViewSetMixin, DynamicFieldsModelViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.LocationPermission]
     queryset = models.District.objects.all()
     fields = fields.district_fields
     serializer_class = serializers.DistrictSerializer
@@ -209,6 +212,7 @@ class RouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     queryset = models.Route.objects
     serializer_class = serializers.RouteSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.RoutePermission]
 
     def list(self, request):
         route_heads = self.queryset.filter(vehicle__isnull=False)
