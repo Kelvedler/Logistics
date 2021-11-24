@@ -10,6 +10,12 @@ USER_GROUPS = {
     'Administrator': 'A',
 }
 
+USER_GROUPS_CHOICE_FIELDS = [
+        (USER_GROUPS['Customer'], 'Customer'),
+        (USER_GROUPS['Driver'], 'Driver'),
+        (USER_GROUPS['Operator'], 'Operator'),
+        (USER_GROUPS['Administrator'], 'Administrator')
+    ]
 
 class UserManager(BaseUserManager):
 
@@ -46,12 +52,7 @@ class User(AbstractBaseUser):
     username = models.CharField(max_length=40, unique=True)
     organization = models.CharField(max_length=40, blank=True)
     email = models.EmailField(max_length=60, unique=True)
-    group = models.CharField(max_length=1, default='C', choices=[
-        (USER_GROUPS['Customer'], 'Customer'),
-        (USER_GROUPS['Driver'], 'Driver'),
-        (USER_GROUPS['Operator'], 'Operator'),
-        (USER_GROUPS['Administrator'], 'Administrator')
-    ])
+    group = models.CharField(max_length=1, default='C', choices=USER_GROUPS_CHOICE_FIELDS)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now=True)
 

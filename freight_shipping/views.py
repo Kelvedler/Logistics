@@ -1,4 +1,3 @@
-import re
 from rest_framework import status, viewsets, exceptions as rest_framework_exceptions
 from . import models, permissions, fields, serializers
 from rest_framework.response import Response
@@ -8,19 +7,7 @@ from users.models import USER_GROUPS
 from django.db.models import Q
 from django.core import exceptions as django_exceptions
 from mixins import SessionExpiryResetViewSetMixin
-
-
-def exclude_fields(fields, exclude):
-    return_fields = {}
-    for field, nested_field in fields.items():
-        if field not in exclude:
-            if nested_field is not None:
-                nested_exclude = [re.search(r'{}__(.+)'.format(field), exclude_item).group(1) for exclude_item in
-                                  exclude if re.search(r'{}__(.+)'.format(field), exclude_item)]
-                return_fields[field] = exclude_fields(nested_field, nested_exclude)
-            else:
-                return_fields[field] = None
-    return return_fields
+from views import exclude_fields
 
 
 class DynamicFieldsModelViewSet(viewsets.ModelViewSet):
