@@ -196,15 +196,10 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
 
 class RouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
-    queryset = models.Route.objects
+    queryset = models.Route.objects.all()
     serializer_class = serializers.RouteSerializer
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [permissions.RoutePermission]
-
-    def list(self, request):
-        route_heads = self.queryset.filter(vehicle__isnull=False)
-        serializer = self.serializer_class(route_heads, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -212,3 +207,29 @@ class RouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        route_instance = get_object_or_404(self.queryset, pk=pk)
+        unordered_route = models.Route.objects.filter(vehicle=route_instance.vehicle)
+        ordered_route = serializers.order_route([{'location': {'id': point['location_id']},
+                                                  **{key: point[key] for key in point if key != 'location_id'}} for
+                                                 point in unordered_route.values()])
+        previous_route_instance, instance_to_delete, next_route_instance = None, None, None
+        for route in ordered_route:
+            if instance_to_delete:
+                next_route_instance = route
+                break
+            elif route_instance.id == route['id']:
+                instance_to_delete = route
+            else:
+                previous_route_instance = route
+        if next_route_instance:
+            previous_route_instance = unordered_route.get(id=previous_route_instance['id'])
+            previous_route_instance.next_route_id = next_route_instance['id']
+            previous_route_instance.save()
+        else:
+            previous_route_instance = unordered_route.get(id=previous_route_instance['id'])
+            previous_route_instance.next_route_id = None
+            previous_route_instance.save()
+        route_instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

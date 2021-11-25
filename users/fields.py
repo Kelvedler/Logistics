@@ -1,4 +1,5 @@
 user_fields = {
+    'id': None,
     'username': None,
     'email': None,
     'organization': None,
