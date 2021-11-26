@@ -46,4 +46,4 @@ class LocationPermission(GroupBasePermission):
 
 class RoutePermission(GroupBasePermission):
     allow_post_for = [USER_GROUPS['Customer']]
-    allow_delete_for = [USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
+    allow_delete_for = [USER_GROUPS['Driver'], USER_GROUPS['Operator'], USER_GROUPS['Administrator']]

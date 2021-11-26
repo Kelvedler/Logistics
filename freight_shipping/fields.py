@@ -33,16 +33,16 @@ vehicle_fields = {
         'temperature_control': None,
         'dangerous_goods': None,
         'vehicle_model': {'id': None, 'name': None, 'length': None, 'width': None, 'height': None, 'maximum_payload': None},
-        'location': None,
-        'route': {'id': None, 'location': {'id': None, 'name': None}, 'next_route_id': None},
+        'location': {'id': None, 'name': None, 'city': None},
+        'route': {'id': None, 'location': {'id': None, 'name': None, 'city': None}, 'next_route_id': None},
     }
 }
 
 order_fields = {
     'id': None,
     'customer': None,
-    'departure': None,
-    'destination': None,
+    'departure': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
+    'destination': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
     'length': None,
     'width': None,
     'height': None,

@@ -31,6 +31,14 @@ class UserSerializer(DynamicFieldsModelSerializer):
             )
             return user
 
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            password = validated_data.pop('password', None)
+            if password:
+                instance.set_password(password)
+            instance = serializers.ModelSerializer.update(self, instance, validated_data)
+            return instance
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         group = representation.get('group')

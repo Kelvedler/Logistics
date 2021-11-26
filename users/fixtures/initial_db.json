@@ -2,10 +2,10 @@
   "model": "users.User",
   "pk": 1,
   "fields": {
-    "username": "Company",
+    "username": "Administrator",
     "organization": "placeholder",
     "email": "placeholder@placeholder.com",
-    "group": "D",
+    "group": "A",
     "date_joined": "1970-01-01",
     "last_login": "1970-01-01",
     "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$SllDd05ETVZFMjBiSTkxZEo1ck1Mbw$QIGJvNgIIFJFP7Q0u0Q9+A"

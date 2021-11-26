@@ -239,7 +239,7 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
             self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
             self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
                                                                        required=False)
-        elif action == 'list' and 'location' not in excluded_fields:
+        elif action in ['list', 'retrieve'] and 'location' not in excluded_fields:
             self.fields['location'] = get_model_serializer(models.District)()
 
     vehicle_model = get_model_serializer(models.VehicleModel)()
@@ -252,7 +252,7 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
 
     def validate(self, attrs):
         driver = attrs['driver']
-        if hasattr(driver, 'vehicle'):
+        if self.context.get('action') == 'create' and hasattr(driver, 'vehicle'):
             raise rest_framework_exceptions.ValidationError(detail='Driver can have only one vehicle')
         return attrs
 
@@ -266,9 +266,10 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            vehicle_model_data = validated_data.pop('vehicle_model')
-            vehicle_model, _ = models.VehicleModel.objects.get_or_create(**vehicle_model_data)
-            validated_data['vehicle_model'] = vehicle_model
+            vehicle_model_data = validated_data.pop('vehicle_model', None)
+            if vehicle_model_data:
+                vehicle_model, _ = models.VehicleModel.objects.get_or_create(**vehicle_model_data)
+                validated_data['vehicle_model'] = vehicle_model
             instance = serializers.ModelSerializer.update(self, instance, validated_data)
             return instance
 
@@ -292,12 +293,15 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
                                                              int(self.context.get('destination_id')))
                 if not valid_departure:
                     return None
-        if self.context.get('action') == 'retrieve':
+        if self.context.get('action') in ['list', 'retrieve'] and representation.get('route'):
             representation['route'] = order_route(representation.pop('route'))
         return representation
 
 
 class OrderSerializer(DynamicFieldsModelSerializer):
+    departure = get_model_serializer(models.Route)()
+    destination = get_model_serializer(models.Route)()
+
     class Meta:
         model = models.Order
         fields = '__all__'

@@ -75,6 +75,8 @@ class UserSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
                                            context={'group': request.user.group})
         if serializer.is_valid():
             serializer.save()
+            if request.user.id == user.id:
+                login(request, user)
             return response.Response(serializer.data, status=status.HTTP_200_OK)
         return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
