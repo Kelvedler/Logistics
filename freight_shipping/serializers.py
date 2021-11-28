@@ -96,7 +96,7 @@ def delete_unpaid_route(ordered_route, orders_in_route):
             delete_route_instance = False
         else:
             for order in orders_in_route:
-                for route_in_order in [order.departure, order.destination]:
+                for route_in_order in [order.departure_route, order.destination_route]:
                     if route_in_order.id == route_instance['id']:
                         payment = getattr(order, 'payment', None)
                         if payment and payment.completed:
@@ -123,13 +123,13 @@ def delete_unpaid_route(ordered_route, orders_in_route):
 def check_if_route_is_full(ordered_route, vehicle_model, order_length, order_width, order_weight):
     route = []
     orders_in_route = models.Order.objects.filter(
-        Q(departure__in=[route['id'] for route in ordered_route]) | Q(
-            destination__in=[route['id'] for route in ordered_route])).distinct()
+        Q(departure_route__in=[route['id'] for route in ordered_route]) | Q(
+            destination_route__in=[route['id'] for route in ordered_route])).distinct()
     delete_unpaid_route(ordered_route, orders_in_route)
     for route_instance in ordered_route:
         order_measurements = []
         for order in orders_in_route:
-            for route_in_order in [order.departure, order.destination]:
+            for route_in_order in [order.departure_route, order.destination_route]:
                 if route_in_order.id == route_instance['id']:
                     order_measurements.append(
                         {'length': order.length, 'width': order.width, 'height': order.height,
@@ -181,7 +181,7 @@ def order_route(route):
             if item['id'] == next_id:
                 ordered_route.append({'id': item['id'], 'location': item['location']})
                 next_id = item.get('next_route_id', None)
-            elif item['next_route_id'] == ordered_id:
+            elif item.get('next_route_id') == ordered_id:
                 ordered_route.insert(0, {'id': item['id'], 'location': item['location']})
                 ordered_id = item['id']
             else:
@@ -289,32 +289,50 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
                 representation['route'] = check_if_route_is_full(ordered_route, vehicle_model, pending_order.length,
                                                                  pending_order.width, pending_order.weight)
                 valid_departure, _ = validate_order_on_route(representation['route'],
-                                                             int(self.context.get('departure_id')),
-                                                             int(self.context.get('destination_id')))
+                                                             int(self.context.get('departure_district_id')),
+                                                             int(self.context.get('destination_district_id')))
                 if not valid_departure:
                     return None
-        if self.context.get('action') in ['list', 'retrieve'] and representation.get('route'):
+        elif self.context.get('action') in ['list', 'retrieve'] and representation.get('route'):
             representation['route'] = order_route(representation.pop('route'))
         return representation
 
 
 class OrderSerializer(DynamicFieldsModelSerializer):
-    departure = get_model_serializer(models.Route)()
-    destination = get_model_serializer(models.Route)()
+
+    def __init__(self, *args, **kwargs):
+        super(OrderSerializer, self).__init__(*args, **kwargs)
+        action = self.context.get('action')
+        if action in ['create', 'update']:
+            self.fields['departure_district'] = serializers.PrimaryKeyRelatedField(
+                queryset=models.District.objects.all())
+            self.fields['destination_district'] = serializers.PrimaryKeyRelatedField(
+                queryset=models.District.objects.all())
+            self.fields['departure_route'] = serializers.PrimaryKeyRelatedField(queryset=models.Route.objects.all(),
+                                                                                allow_null=True, required=False)
+            self.fields['destination_route'] = serializers.PrimaryKeyRelatedField(queryset=models.Route.objects.all(),
+                                                                                  allow_null=True, required=False)
+
+    customer = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+    payment = get_model_serializer(models.Payment)(read_only=True)
 
     class Meta:
         model = models.Order
         fields = '__all__'
+        depth = 1
 
     def validate(self, attrs):
-        if bool(attrs.get('departure')) != bool(attrs.get('destination')):
+        if self.context.get('action') == 'update' and getattr(self.context.get('payment'), 'completed', None):
+            raise rest_framework_exceptions.ValidationError(
+                detail={'message': 'cannot modify order after payment has been completed'})
+        if bool(attrs.get('departure_route')) != bool(attrs.get('destination_route')):
             raise rest_framework_exceptions.ValidationError(
                 detail={'message': 'not allowed to provide destination without departure or vice versa'})
-        elif attrs.get('departure') and attrs.get('destination'):
+        elif attrs.get('departure_route') and attrs.get('destination_route'):
             try:
-                departure = models.Route.objects.get(pk=attrs['departure'].id)
+                departure = models.Route.objects.get(pk=attrs['departure_route'].id)
             except django_exceptions.ObjectDoesNotExist:
-                raise rest_framework_exceptions.ValidationError(detail={'departure': 'Object not found'})
+                raise rest_framework_exceptions.ValidationError(detail={'departure_route': 'Object not found'})
             if departure.vehicle.vehicle_model.height < attrs['height']:
                 raise rest_framework_exceptions.ValidationError({'message': 'order height is higher then vehicle'})
             route = models.Route.objects.filter(vehicle_id=departure.vehicle)
@@ -324,18 +342,17 @@ class OrderSerializer(DynamicFieldsModelSerializer):
                  point in route.values()])
             departure_index, destination_index, departure_id, destination_id = -1, -1, None, None
             for point in ordered_route:
-                if point['id'] == attrs['departure'].id:
+                if point['id'] == attrs['departure_route'].id:
                     departure_index, departure_id = point['index'], point['location']['id']
-                elif point['id'] == attrs['destination'].id:
+                elif point['id'] == attrs['destination_route'].id:
                     destination_index, destination_id = point['index'], point['location']['id']
             if destination_index == -1:
-                raise rest_framework_exceptions.ValidationError(detail={'destination': 'Object not found'})
+                raise rest_framework_exceptions.ValidationError(detail={'destination_route': 'Object not found'})
             if departure_index > destination_index:
                 raise rest_framework_exceptions.ValidationError(
                     detail={'route': 'Departure should come before destination'})
             checked_route = check_if_route_is_full(ordered_route, departure.vehicle.vehicle_model, attrs['length'],
-                                                   attrs['width'],
-                                                   attrs['weight'])
+                                                   attrs['width'], attrs['weight'])
             valid_departure, valid_destination = validate_order_on_route(checked_route, departure_id, destination_id)
             if not valid_departure or not valid_destination:
                 raise rest_framework_exceptions.ValidationError(detail='Could not place the order, vehicle is full')
@@ -374,3 +391,26 @@ class RouteSerializer(DynamicFieldsModelSerializer):
             except django_exceptions.ObjectDoesNotExist:
                 raise rest_framework_exceptions.ValidationError(detail='next_route_id object does not exist')
         return attrs
+
+
+class CompletedOrderSerializer(DynamicFieldsModelSerializer):
+    payment = serializers.PrimaryKeyRelatedField(queryset=models.Payment.objects.all())
+
+    class Meta:
+        model = models.CompletedOrder
+        fields = '__all__'
+
+    def validate(self, attrs):
+        ordered_route = self.context.get('ordered_route')
+        route_id = self.context.get('route_id')
+        if ordered_route[0]['id'] != route_id:
+            raise rest_framework_exceptions.ValidationError(detail='cannot complete non first route point')
+        return attrs
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            payment = validated_data.pop('payment')
+            completed_order = models.CompletedOrder.objects.create(**validated_data)
+            payment.completed_order = completed_order
+            payment.save()
+        return completed_order

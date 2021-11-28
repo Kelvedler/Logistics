@@ -3,6 +3,6 @@ from rest_framework import routers
 
 router = routers.SimpleRouter()
 router.register('order', views.OrderSet)
-router.register('order/capture', views.CaptureOrderSet, basename='capture')
+router.register(r'order/(?P<pk>\d+)/capture', views.CaptureOrderSet, basename='capture')
 
 urlpatterns = router.urls

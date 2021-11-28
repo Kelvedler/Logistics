@@ -2,10 +2,11 @@ from rest_framework import status, viewsets, exceptions as rest_framework_except
 from . import models, permissions, fields, serializers
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from users.views import CsrfExemptSessionAuthentication
-from users.models import USER_GROUPS
+from django.db import transaction
 from django.db.models import Q
 from django.core import exceptions as django_exceptions
+from users.views import CsrfExemptSessionAuthentication
+from users.models import USER_GROUPS
 from mixins import SessionExpiryResetViewSetMixin
 from views import exclude_fields
 
@@ -120,14 +121,16 @@ class VehicleLocationSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     serializer_class = serializers.VehicleSerializer
     fields = fields.vehicle_fields
 
-    def list(self, request, departure_id=None, destination_id=None, order_id=None):
+    def list(self, request, order_id=None):
         excluded_fields = request.query_params.getlist('exclude')
         detailed_fields = exclude_fields(self.fields['detailed'], excluded_fields)
         try:
             pending_order = models.Order.objects.get(pk=order_id)
         except django_exceptions.ObjectDoesNotExist:
             raise rest_framework_exceptions.ValidationError(detail={'order': 'Invalid ID'})
-        filters = (Q(route__location=departure_id) | Q(location=departure_id))
+        departure_district_id = pending_order.departure_district.id
+        destination_district_id = pending_order.destination_district.id
+        filters = (Q(route__location=departure_district_id) | Q(location=departure_district_id))
         if pending_order.temperature_control:
             filters &= Q(temperature_control=True)
         if pending_order.dangerous_goods:
@@ -137,7 +140,8 @@ class VehicleLocationSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             many=True,
             fields=detailed_fields,
             context={'action': self.action, 'serializer': self.view_name,
-                     'excluded_fields': excluded_fields, 'departure_id': departure_id, 'destination_id': destination_id,
+                     'excluded_fields': excluded_fields, 'departure_district_id': departure_district_id,
+                     'destination_district_id': destination_district_id,
                      'pending_order': pending_order})
         return Response([obj for obj in serializer.data if obj], status=status.HTTP_204_NO_CONTENT)
 
@@ -151,8 +155,9 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def list(self, request):
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = exclude_fields(self.fields, excluded_fields)
-        serializer = self.serializer_class(self.queryset.all(), many=True, fields=display_fields)
+        display_fields = exclude_fields(self.fields['detailed'], excluded_fields)
+        serializer = self.serializer_class(self.queryset.all(), many=True, fields=display_fields,
+                                           context={'action': self.action})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
@@ -160,8 +165,9 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             request.data['customer'] = request.user.id
         self.check_object_permissions(request=request, obj=None)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = exclude_fields(self.fields, excluded_fields)
-        serializer = self.serializer_class(data=request.data, fields=display_fields)
+        display_fields = exclude_fields(self.fields['basic'], excluded_fields)
+        serializer = self.serializer_class(data=request.data, fields=display_fields,
+                                           context={'action': self.action})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -171,8 +177,9 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=order)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = exclude_fields(self.fields, excluded_fields)
-        serializer = self.serializer_class(order, fields=display_fields)
+        display_fields = exclude_fields(self.fields['detailed'], excluded_fields)
+        serializer = self.serializer_class(order, fields=display_fields,
+                                           context={'action': self.action})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, pk=None):
@@ -181,8 +188,9 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         order = get_object_or_404(self.queryset.all(), pk=pk)
         self.check_object_permissions(request=request, obj=None)
         excluded_fields = request.query_params.getlist('exclude')
-        display_fields = exclude_fields(self.fields, excluded_fields)
-        serializer = self.serializer_class(order, data=request.data, fields=display_fields)
+        display_fields = exclude_fields(self.fields['basic'], excluded_fields)
+        serializer = self.serializer_class(order, data=request.data, fields=display_fields,
+                                           context={'action': self.action, 'payment': getattr(order, 'payment', None)})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -233,3 +241,50 @@ class RouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
             previous_route_instance.save()
         route_instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CompleteRouteSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
+    queryset = models.CompletedOrder.objects.all()
+    serializer_class = serializers.CompletedOrderSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.CompleteRoutePermission]
+
+    def create(self, request, route_id=None):
+        route = get_object_or_404(models.Route.objects.all(), pk=route_id)
+        unordered_route = models.Route.objects.filter(vehicle_id=route.vehicle_id)
+        self.check_object_permissions(request=request, obj=route.vehicle.driver)
+        completed_orders = models.Order.objects.filter(destination_route=route_id,
+                                                       payment__completed=True).select_related('payment')
+        data = [
+            {'departure': order_value.get('departure_district_id'),
+             'destination': order_value.get('destination_district_id'),
+             'driver': route.vehicle.driver.id, 'customer': order_value.get('customer_id'), 'payment': order.payment.id}
+            for order_value, order in
+            zip(completed_orders.values(), completed_orders)]
+        ordered_route = serializers.order_route([{'location': {'id': point['location_id']},
+                                                  **{key: point[key] for key in point if key != 'location_id'}} for
+                                                 point in unordered_route.values()])
+        serializer = self.serializer_class(data=data, many=True,
+                                           context={'route_id': int(route_id), 'ordered_route': ordered_route})
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+                completed_orders.delete()
+                route.delete()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompletedOrdersSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
+    queryset = models.CompletedOrder.objects.all()
+    serializer_class = serializers.CompletedOrderSerializer
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def list(self, request):
+        serializer = self.serializer_class(self.queryset.select_related('payment'), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None):
+        completed_order = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.serializer_class(completed_order)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -39,14 +39,36 @@ vehicle_fields = {
 }
 
 order_fields = {
-    'id': None,
-    'customer': None,
-    'departure': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
-    'destination': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
-    'length': None,
-    'width': None,
-    'height': None,
-    'weight': None,
-    'temperature_control': None,
-    'dangerous_goods': None,
+    'basic': {
+        'id': None,
+        'customer': None,
+        'departure_route': None,
+        'destination_route': None,
+        'departure_district': None,
+        'destination_district': None,
+        'length': None,
+        'width': None,
+        'height': None,
+        'weight': None,
+        'temperature_control': None,
+        'dangerous_goods': None,
+        'payment': {'id': None, 'payment_method': None, 'payment_id': None, 'completed': None, 'currency_code': None,
+                    'amount': None}
+    },
+    'detailed': {
+        'id': None,
+        'customer': None,
+        'departure_route': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
+        'destination_route': {'id': None, 'next_route_id': None, 'location': None, 'vehicle': None},
+        'departure_district': {'id': None, 'name': None, 'city': None},
+        'destination_district': {'id': None, 'name': None, 'city': None},
+        'length': None,
+        'width': None,
+        'height': None,
+        'weight': None,
+        'temperature_control': None,
+        'dangerous_goods': None,
+        'payment': {'id': None, 'payment_method': None, 'payment_id': None, 'completed': None, 'currency_code': None,
+                    'amount': None}
+    }
 }

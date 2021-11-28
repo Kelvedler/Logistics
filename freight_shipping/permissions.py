@@ -46,4 +46,15 @@ class LocationPermission(GroupBasePermission):
 
 class RoutePermission(GroupBasePermission):
     allow_post_for = [USER_GROUPS['Customer']]
-    allow_delete_for = [USER_GROUPS['Driver'], USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
+    allow_delete_for = [USER_GROUPS['Operator'], USER_GROUPS['Administrator']]
+
+
+class CompleteRoutePermission(GroupBasePermission):
+    allow_get_for = []
+    allow_post_for = [USER_GROUPS['Driver']]
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.id != obj.id:
+            self.message = 'Permission denied, driver can only complete his/her own routes'
+            return False
+        return True

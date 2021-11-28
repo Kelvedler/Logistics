@@ -82,6 +82,8 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
         payment_url = filtered_order.group(1) + filtered_order.group(2)
         request.data['payment_method'] = 'paypal'
         request.data['payment_id'] = filtered_order.group(2)
+        request.data['currency_code'] = request.data['amount']['currency_code']
+        request.data['amount'] = request.data['amount']['value']
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -93,8 +95,8 @@ class CaptureOrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
     queryset = freight_shipping_models.Payment.objects
 
-    def create(self, request):
-        payment_order = get_object_or_404(self.queryset.all(), pk=request.data['order_id'])
+    def create(self, request, pk=None):
+        payment_order = get_object_or_404(self.queryset.all(), pk=pk)
         access_token, rest_status = get_access_token()
         access_token = ast.literal_eval(access_token['access_token'])['access_token']
         if 'message' in access_token:
