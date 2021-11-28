@@ -50,11 +50,18 @@ class RoutePermission(GroupBasePermission):
 
 
 class CompleteRoutePermission(GroupBasePermission):
-    allow_get_for = []
+    allow_get_for = [USER_GROUPS['Customer'], USER_GROUPS['Driver'], USER_GROUPS['Operator'],
+                     USER_GROUPS['Administrator']]
     allow_post_for = [USER_GROUPS['Driver']]
 
     def has_object_permission(self, request, view, obj):
-        if request.user.id != obj.id:
+        if request.method == 'POST' and request.user.id != obj.get('driver_id'):
             self.message = 'Permission denied, driver can only complete his/her own routes'
+            return False
+        elif request.user.group == USER_GROUPS['Customer'] and request.user.id != obj.get('customer_id'):
+            self.message = 'Permission denied, customer can view only his/her own orders'
+            return False
+        elif request.user.group == USER_GROUPS['Driver'] and request.user.id != obj.get('driver_id'):
+            self.message = 'Permission denied, driver can only view orders completed by him/her'
             return False
         return True

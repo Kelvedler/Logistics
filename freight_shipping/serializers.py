@@ -234,16 +234,14 @@ class VehicleSerializer(DynamicFieldsModelSerializer):
     def __init__(self, *args, **kwargs):
         super(VehicleSerializer, self).__init__(*args, **kwargs)
         action = self.context.get('action')
-        excluded_fields = self.context.get('excluded_fields', [])
         if action in ['create', 'update']:
             self.fields['location'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
             self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all(),
                                                                        required=False)
-        elif action in ['list', 'retrieve'] and 'location' not in excluded_fields:
-            self.fields['location'] = get_model_serializer(models.District)()
 
     vehicle_model = get_model_serializer(models.VehicleModel)()
     route = get_model_serializer(models.Route, location=get_model_serializer(models.District)())(many=True)
+    location = get_model_serializer(models.District)()
 
     class Meta:
         model = models.Vehicle
@@ -394,11 +392,24 @@ class RouteSerializer(DynamicFieldsModelSerializer):
 
 
 class CompletedOrderSerializer(DynamicFieldsModelSerializer):
-    payment = serializers.PrimaryKeyRelatedField(queryset=models.Payment.objects.all())
+
+    def __init__(self, *args, **kwargs):
+        super(CompletedOrderSerializer, self).__init__(*args, **kwargs)
+        action = self.context.get('action')
+        excluded_fields = self.context.get('excluded_fields', [])
+        if action == 'create':
+            self.fields['payment'] = serializers.PrimaryKeyRelatedField(queryset=models.Payment.objects.all())
+            self.fields['driver'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+            self.fields['customer'] = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+            self.fields['departure'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
+            self.fields['destination'] = serializers.PrimaryKeyRelatedField(queryset=models.District.objects.all())
+
+    payment = get_model_serializer(models.Payment)()
 
     class Meta:
         model = models.CompletedOrder
         fields = '__all__'
+        depth = 1
 
     def validate(self, attrs):
         ordered_route = self.context.get('ordered_route')
