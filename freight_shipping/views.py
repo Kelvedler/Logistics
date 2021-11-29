@@ -155,8 +155,22 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def list(self, request):
         excluded_fields = request.query_params.getlist('exclude')
+        customer_filter = request.query_params.get('customer')
+        driver_filter = request.query_params.get('driver')
+        self.check_object_permissions(request=request,
+                                      obj={'customer_id': int(customer_filter) if customer_filter else None,
+                                           'driver_id': int(driver_filter) if driver_filter else None})
+        filters = {}
+        if customer_filter:
+            filters['customer'] = customer_filter
+        if driver_filter:
+            filters['departure_route__vehicle__driver__id'] = driver_filter
+        if filters:
+            queryset = self.queryset.filter(**filters).all()
+        else:
+            queryset = self.queryset.all()
         display_fields = exclude_fields(self.fields['detailed'], excluded_fields)
-        serializer = self.serializer_class(self.queryset.all(), many=True, fields=display_fields,
+        serializer = self.serializer_class(queryset, many=True, fields=display_fields,
                                            context={'action': self.action})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -175,7 +189,9 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         order = get_object_or_404(self.queryset.all(), pk=pk)
-        self.check_object_permissions(request=request, obj=order)
+        driver_id = getattr(getattr(getattr(order.departure_route, 'vehicle', None), 'driver', None), 'id', None)
+        self.check_object_permissions(request=request, obj={'customer_id': order.customer.id,
+                                                            'driver_id': driver_id})
         excluded_fields = request.query_params.getlist('exclude')
         display_fields = exclude_fields(self.fields['detailed'], excluded_fields)
         serializer = self.serializer_class(order, fields=display_fields,

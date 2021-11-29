@@ -30,10 +30,13 @@ class OrderPermission(GroupBasePermission):
                 self.message = 'Permission denied, customer can only place order on his/her name'
                 return False
         elif request.method in ['GET', 'DELETE']:
-            if request.user.id != obj.customer.id and request.user.group == USER_GROUPS['Customer']:
+            if request.user.group == USER_GROUPS['Customer'] and request.user.id != obj.get('customer_id'):
                 error_dict = {'GET': 'view', 'DELETE': 'delete'}
                 self.message = 'Permission denied, customer can {} only his/her own orders.'.format(
                     error_dict[request.method])
+                return False
+            elif request.user.group == USER_GROUPS['Driver'] and request.user.id != obj.get('driver_id'):
+                self.message = 'Permission denied, driver can only view orders placed on his/her vehicle'
                 return False
         return True
 
