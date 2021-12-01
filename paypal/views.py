@@ -8,7 +8,7 @@ from rest_framework import viewsets, status
 from urllib import error, request as urllib_request
 from rest_framework.response import Response
 from users.views import CsrfExemptSessionAuthentication
-from . import statuses, serializers
+from . import statuses, serializers, permissions
 from freight_shipping import models as freight_shipping_models
 from freight_shipping.serializers import validate_structure
 from mixins import SessionExpiryResetViewSetMixin
@@ -48,6 +48,7 @@ def make_request(access_token, request_url: str, request_body: dict = None):
 
 class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.OrderPermission]
     queryset = freight_shipping_models.Payment.objects
     serializer_class = serializers.PaymentSerializer
 
@@ -93,6 +94,7 @@ class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
 
 class CaptureOrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [permissions.OrderPermission]
     queryset = freight_shipping_models.Payment.objects
 
     def create(self, request, pk=None):

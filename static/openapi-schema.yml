@@ -1,0 +1,1328 @@
+openapi: 3.0.1
+info:
+  title: Logistics
+  description: Swagger documented API
+  contact:
+    email: hnflkmvjcm@gmail.com
+  version: 1.0.0
+servers:
+- url: http://127.0.0.1:8000
+tags:
+- name: Freight Shipping
+  description: Freight shipping endpoints
+- name: Paypal
+  description: Paypal payment endpoints
+- name: Users
+  description: Authentification and user related endpoints
+paths:
+  /freight_shipping/country/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns the list of countries
+      parameters:
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CountryResponse'
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create new country object
+      requestBody:
+        description: Country object
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Country'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryResponse'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/country/{id}/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Find country by ID
+      description: Returns a single country
+      parameters:
+      - name: id
+        in: path
+        description: ID of country to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryResponse'
+    put:
+      tags:
+      - Freight Shipping
+      summary: Update an existing country
+      parameters:
+      - name: id
+        in: path
+        description: ID of country to update
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      requestBody:
+        description: Country object to update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Country'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryResponse'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete country
+      parameters:
+      - name: id
+        in: path
+        description: ID of country to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/city/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of cities
+      parameters:
+      - name: country
+        in: query
+        description: Filter for given country.
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityResponse'
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create new city object
+      requestBody:
+        description: City object, tied to existing country
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/City'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityResponse'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/city/{id}/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Find city by ID
+      description: Returns a single city
+      parameters:
+      - name: id
+        in: path
+        description: ID of city to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityResponse'
+    put:
+      tags:
+      - Freight Shipping
+      summary: Update existing city
+      parameters:
+      - name: id
+        in: path
+        description: ID of city to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      requestBody:
+        description: City object to update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/City'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityResponse'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete city
+      parameters:
+      - name: id
+        in: path
+        description: ID of city to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/district/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of districts
+      parameters:
+      - name: city
+        in: query
+        description: Filter for given city.
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictResponse'
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create new district object
+      requestBody:
+        description: District object, tied to existing city
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/District'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictResponse'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/district/{id}/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Find district by ID
+      description: Returns a single district
+      parameters:
+      - name: id
+        in: path
+        description: ID of district to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictResponse'
+    put:
+      tags:
+        - Freight Shipping
+      summary: Update existing district
+      parameters:
+        - name: id
+          in: path
+          description: ID of district to return
+          required: true
+          schema:
+            type: integer
+        - name: exclude
+          in: query
+          description: Fields to exclude
+          schema:
+            type: array
+            collectionFormat: multi
+      requestBody:
+        description: District object to update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/District'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictResponse'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete district
+      parameters:
+      - name: id
+        in: path
+        description: ID of district to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/vehicle/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of vehicles
+      parameters:
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseDetailed'
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create a new vehicle object
+      requestBody:
+        description: Vehicle object with unique plate. Each driver can only have single vehicle.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleBasic'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseBasic'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/vehicle/{id}:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Find vehicle by ID
+      description: Returns a single vehicle
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseDetailed'
+    put:
+      tags:
+      - Freight Shipping
+      summary: Update existing vehicle
+      parameters:
+        - name: id
+          in: path
+          description: ID of vehicle to return
+          required: true
+          schema:
+            type: integer
+        - name: exclude
+          in: query
+          description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+          schema:
+            type: array
+            collectionFormat: multi
+      requestBody:
+        description: Vehicle object to update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleBasic'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseBasic'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete vehicle
+      parameters:
+      - name: id
+        in: path
+        description: ID of vehicle to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/order/{id}/vehicle/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of vehicles available for the given order
+      parameters:
+      - name: id
+        in: path
+        description: ID of order to filter vehicles against
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseDetailed'
+  /freight_shipping/order/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of orders
+      parameters:
+      - name: customer
+        in: query
+        description: Filter for given customer. Customers can only view their orders.
+        schema:
+          type: integer
+      - name: driver
+        in: query
+        description: Filter for given driver. Drivers can only view orders placed on their vehicle.
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseDetailed'
+      security:
+      - sessionAuthentication: []
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create a new order
+      requestBody:
+        description: Order object. Route fields are not required during creation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderBasic'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseBasic'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/order/{id}:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Find order by ID
+      description: Returns a single order
+      parameters:
+      - name: id
+        in: path
+        description: ID of order to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseDetailed'
+      security:
+      - sessionAuthentication: []
+    put:
+      tags:
+      - Freight Shipping
+      summary: Update existing order
+      parameters:
+      - name: id
+        in: path
+        description: ID of order to return
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      requestBody:
+        description: Order object to update. Cannot update orders with captured payment
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderBasic'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseBasic'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete order
+      parameters:
+      - name: id
+        in: path
+        description: ID of order to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/order/completed/:
+    get:
+      tags:
+      - Freight Shipping
+      summary: Returns list of completed orders
+      parameters:
+      - name: customer
+        in: query
+        description: Filter for given customer. Customers can only view their orders.
+        schema:
+          type: integer
+      - name: driver
+        in: query
+        description: Filter for given driver. Drivers can only view orders placed on their vehicle.
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCompletedResponseDetailed'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/order/completed/{id}:
+    get:
+      tags:
+        - Freight Shipping
+      summary: Find completed order by ID
+      description: Returns a single order
+      parameters:
+        - name: id
+          in: path
+          description: ID of completed order to return
+          required: true
+          schema:
+            type: integer
+        - name: exclude
+          in: query
+          description: Fields to exclude. Add double underscore to exclude nested one e.g. "field__nested_field"
+          schema:
+            type: array
+            collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCompletedResponseDetailed'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/route/:
+    post:
+      tags:
+      - Freight Shipping
+      summary: Create a new route point
+      requestBody:
+        description: Route object
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteBasic'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponseDetailed'
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/route/{id}:
+    delete:
+      tags:
+      - Freight Shipping
+      summary: Delete route point
+      parameters:
+      - name: id
+        in: path
+        description: ID of route to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /freight_shipping/route/{id}/complete/:
+    post:
+      tags:
+      - Freight Shipping
+      summary: Complete existing route point
+      parameters:
+        - name: id
+          in: path
+          description: ID of route to complete
+          required: true
+          schema:
+            type: integer
+      description: Deletes paid orders related to the given route to create completed ones
+      responses:
+        201:
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCompletedResponseDetailed'
+      security:
+      - sessionAuthentication: []
+  /paypal/order/:
+    post:
+      tags:
+      - Paypal
+      summary: Create Paypal order
+      description: Creates paypal order for the given order
+      requestBody:
+        description: Paypal order object
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaypalBasic'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaypalResponseBasic'
+      security:
+      - sessionAuthentication: []
+  /paypal/order/{id}/capture/:
+    post:
+      tags:
+      - Paypal
+      summary: Capture Paypal order
+      parameters:
+        - name: id
+          in: path
+          description: ID of Paypal order to capture
+          required: true
+          schema:
+            type: integer
+      description: Captures given paypal order
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+      security:
+      - sessionAuthentication: []
+  /users/register/:
+    post:
+      tags:
+      - Users
+      summary: Create new user
+      requestBody:
+        description: User object. Organization is optional
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+        required: true
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseBasic'
+  /users/login/:
+    post:
+      tags:
+      - Users
+      summary: Login user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseBasic'
+  /users/logout/:
+    post:
+      tags:
+      - Users
+      summary: Logout user
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+  /users/user/:
+    get:
+      tags:
+      - Users
+      summary: Returns list of users
+      parameters:
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseBasic'
+      security:
+      - sessionAuthentication: []
+  /users/user/{id}/:
+    get:
+      tags:
+      - Users
+      summary: Returns a single user
+      parameters:
+        - name: id
+          in: path
+          description: ID of user to return
+          required: true
+          schema:
+            type: integer
+        - name: exclude
+          in: query
+          description: Fields to exclude
+          schema:
+            type: array
+            collectionFormat: multi
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseBasic'
+      security:
+      - sessionAuthentication: []
+    put:
+      tags:
+      - Users
+      summary: Update existing user
+      parameters:
+      - name: id
+        in: path
+        description: ID of user to update
+        required: true
+        schema:
+          type: integer
+      - name: exclude
+        in: query
+        description: Fields to exclude
+        schema:
+          type: array
+          collectionFormat: multi
+      requestBody:
+        description: User object to update. Group can only be updated by administrator
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDetailed'
+        required: true
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseBasic'
+      security:
+      - sessionAuthentication: []
+    delete:
+      tags:
+      - Users
+      summary: Delete user
+      parameters:
+      - name: id
+        in: path
+        description: ID of user to delete
+        required: true
+        schema:
+          type: integer
+      responses:
+        204:
+          description: No content
+      security:
+      - sessionAuthentication: []
+components:
+  schemas:
+    Country:
+      type: object
+      properties:
+        name:
+          type: string
+    CountryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    City:
+      type: object
+      properties:
+        name:
+          type: string
+        country:
+          type: string
+    CityResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        country:
+          type: string
+    District:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+    DistrictResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        city:
+          type: string
+    VehicleModel:
+      type: object
+      properties:
+        name:
+          type: string
+        length:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        maximum_payload:
+          type: integer
+    VehicleModelResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        length:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        maximum_payload:
+          type: integer
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+        organization:
+          type: string
+    UserRegister:
+      type: object
+      properties:
+        username:
+          type: string
+        organization:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+    UserLogin:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        organization:
+          type: string
+    UserResponseBasic:
+      type: object
+      properties:
+        id:
+          type: integer
+        date_joined:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+        username:
+          type: string
+        organization:
+          type: string
+        email:
+          type: string
+        group:
+          type: string
+    UserDetailed:
+      type: object
+      properties:
+        username:
+          type: string
+        organization:
+          type: string
+        email:
+          type: string
+        group:
+          type: string
+        password:
+          type: string
+    RouteBasic:
+      type: object
+      properties:
+        location:
+          type: integer
+        vehicle:
+          type: integer
+    RouteResponseDetailed:
+      type: object
+      properties:
+        id:
+          type: integer
+        next_route_id:
+          type: integer
+        location:
+          type: integer
+        vehicle:
+          type: integer
+    RouteResponseIndexed:
+      type: object
+      properties:
+        index:
+          type: integer
+        id:
+          type: integer
+        location:
+          $ref: '#/components/schemas/DistrictResponse'
+    VehicleBasic:
+      type: object
+      properties:
+        driver:
+          type: string
+        plate:
+          type: string
+        temperature_control:
+          type: string
+        dangerous_goods:
+          type: string
+        vehicle_model:
+          $ref: '#/components/schemas/VehicleModel'
+        location:
+          type: integer
+    VehicleResponseBasic:
+      type: object
+      properties:
+        id:
+          type: integer
+        driver:
+          type: string
+        plate:
+          type: string
+        temperature_control:
+          type: string
+        dangerous_goods:
+          type: string
+        vehicle_model:
+          $ref: '#/components/schemas/VehicleModelResponse'
+        location:
+          type: integer
+    VehicleResponseDetailed:
+      type: object
+      properties:
+        id:
+          type: integer
+        driver:
+          $ref: '#/components/schemas/UserResponse'
+        plate:
+          type: string
+        temperature_control:
+          type: string
+        dangerous_goods:
+          type: string
+        vehicle_model:
+          $ref: '#/components/schemas/VehicleModelResponse'
+        location:
+          $ref: '#/components/schemas/DistrictResponse'
+        route:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteResponseIndexed'
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        payment_method:
+          type: string
+        payment_id:
+          type: string
+        completed:
+          type: boolean
+        currency_code:
+          type: string
+        amount:
+          type: string
+    OrderBasic:
+      type: object
+      properties:
+        customer:
+          type: integer
+        length:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        weight:
+          type: integer
+        temperature_control:
+          type: boolean
+        dangerous_goods:
+          type: boolean
+        departure_route:
+          type: integer
+        destination_route:
+          type: integer
+        departure_district:
+          type: integer
+        destination_district:
+          type: integer
+    OrderResponseBasic:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer:
+          type: integer
+        length:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        weight:
+          type: integer
+        temperature_control:
+          type: boolean
+        dangerous_goods:
+          type: boolean
+        departure_route:
+          type: integer
+        destination_route:
+          type: integer
+        departure_district:
+          type: integer
+        destination_district:
+          type: integer
+        payment:
+          $ref: '#/components/schemas/PaymentResponse'
+    OrderResponseDetailed:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer:
+          type: integer
+        departure_route:
+          $ref: '#/components/schemas/RouteResponseDetailed'
+        destination_route:
+          $ref: '#/components/schemas/RouteResponseDetailed'
+        departure_district:
+          $ref: '#/components/schemas/DistrictResponse'
+        destination_district:
+          $ref: '#/components/schemas/DistrictResponse'
+        length:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        weight:
+          type: integer
+        temperature_control:
+          type: boolean
+        dangerous_goods:
+          type: boolean
+        payment:
+          $ref: '#/components/schemas/PaymentResponse'
+    OrderCompletedResponseDetailed:
+      type: object
+      properties:
+        id:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+        departure:
+          $ref: '#/components/schemas/DistrictResponse'
+        destination:
+          $ref: '#/components/schemas/DistrictResponse'
+        driver:
+          $ref: '#/components/schemas/UserResponse'
+        customer:
+          $ref: '#/components/schemas/UserResponse'
+        payment:
+          $ref: '#/components/schemas/PaymentResponse'
+    PaypalBasic:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        amount:
+          type: object
+          properties:
+            currency_code:
+              type: string
+            value:
+              type: string
+    PaypalResponseBasic:
+      type: object
+      properties:
+        payment_url:
+          type: string
+        id:
+          type: integer
+        payment_method:
+          type: string
+        payment_id:
+          type: string
+        completed:
+          type: boolean
+        currency_code:
+          type: string
+        amount:
+          type: string
+        order:
+          type: integer
+        completed_order:
+          type: integer
+    CaptureResponse:
+      type: object
+      properties:
+        paypal_status:
+          type: string
+        completed:
+          type: boolean
+  securitySchemes:
+    sessionAuthentication:
+      type: apiKey
+      in: cookie
+      name: sessionid

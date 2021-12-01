@@ -78,8 +78,8 @@ completed_order_fields = {
     'completed_at': None,
     'departure': {'id': None, 'name': None, 'city': None},
     'destination': {'id': None, 'name': None, 'city': None},
-    'driver': {'id': None, 'username': None, 'organization': None, 'email': None},
-    'customer': {'id': None, 'username': None, 'organization': None, 'email': None},
+    'driver': {'id': None, 'username': None, 'organization': None},
+    'customer': {'id': None, 'username': None, 'organization': None},
     'payment': {'id': None, 'payment_method': None, 'payment_id': None, 'completed': None, 'currency_code': None,
                 'amount': None}
 }
