@@ -105,7 +105,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'soapfish.redistogo.com:10409/',
+        'LOCATION': 'redis://soapfish.redistogo.com:10409',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PASSWORD': os.environ.get('REDIS_PASSWORD')

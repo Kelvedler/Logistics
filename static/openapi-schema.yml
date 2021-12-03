@@ -965,7 +965,7 @@ components:
         name:
           type: string
         country:
-          type: string
+          type: integer
     CityResponse:
       type: object
       properties:
@@ -974,14 +974,14 @@ components:
         name:
           type: string
         country:
-          type: string
+          type: integer
     District:
       type: object
       properties:
         name:
           type: string
         city:
-          type: string
+          type: integer
     DistrictResponse:
       type: object
       properties:
@@ -990,7 +990,7 @@ components:
         name:
           type: string
         city:
-          type: string
+          type: integer
     VehicleModel:
       type: object
       properties:
