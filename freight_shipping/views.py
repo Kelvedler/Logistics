@@ -143,7 +143,7 @@ class VehicleLocationSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
                      'excluded_fields': excluded_fields, 'departure_district_id': departure_district_id,
                      'destination_district_id': destination_district_id,
                      'pending_order': pending_order})
-        return Response([obj for obj in serializer.data if obj], status=status.HTTP_204_NO_CONTENT)
+        return Response([obj for obj in serializer.data if obj], status=status.HTTP_200_OK)
 
 
 class OrderSet(SessionExpiryResetViewSetMixin, viewsets.ViewSet):
