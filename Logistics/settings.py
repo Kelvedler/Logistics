@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
+import re
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -90,14 +91,16 @@ REST_FRAMEWORK = {
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+db_credentials = re.search(r'postgres://([^:]+):([^@]+)@([^:]+):([^/]+)/(.+)', os.environ.get('DATABASE_URL'))
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'd8kbvnc4dsdob2',
-        'USER': 'hdwvqyqttspjsv',
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': 'ec2-52-17-1-206.eu-west-1.compute.amazonaws.com',
-        'PORT': '5432'
+        'NAME': db_credentials.group(5),
+        'USER': db_credentials.group(1),
+        'PASSWORD': db_credentials.group(2),
+        'HOST': db_credentials.group(3),
+        'PORT': db_credentials.group(4)
     }
 }
 
