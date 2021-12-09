@@ -7,4 +7,4 @@
 * To register as a driver person has to be verified by administrator.
 * When driver completes route point all related paid orders are archived.
 * **For more information about API endpoints, visit https://logistics-rest-api.herokuapp.com**
-* Application is build with Django, Django REST Framework, PostgreSQL, Redis. Payment implemented using Paypal. Hosted on Heroku.
+* Built with Django, Django REST Framework, PostgreSQL, Redis. Payment implemented using Paypal. Hosted on Heroku.
